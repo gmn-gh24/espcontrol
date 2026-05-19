@@ -48,7 +48,8 @@ struct ClimateControlCtx {
   bool received_max = false;
   int step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
   int precision = 0;
-  bool show_target_when_off = false;
+  std::string label_display = "label";
+  std::string number_display = "target";
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
@@ -271,6 +272,37 @@ inline std::string climate_option_label(const std::string &raw) {
   return sentence_cap_text(value);
 }
 
+inline lv_coord_t climate_estimated_label_width(const std::string &label) {
+  lv_coord_t width = 0;
+  for (char ch : label) {
+    if (ch == ' ') width += 8;
+    else if (ch == '/' || ch == '-' || ch == '_') width += 10;
+    else if (std::isupper((unsigned char)ch)) width += 18;
+    else width += 16;
+  }
+  return width;
+}
+
+inline lv_coord_t climate_option_menu_width(const std::vector<std::string> &options,
+                                            const std::string &kind) {
+  if (kind != "hvac") return 220;
+  lv_coord_t label_w = 0;
+  for (const auto &option : options) {
+    lv_coord_t w = climate_estimated_label_width(climate_option_label(option));
+    if (w > label_w) label_w = w;
+  }
+
+  lv_coord_t width = label_w + 92;
+  if (width < 240) width = 240;
+
+  lv_disp_t *disp = lv_disp_get_default();
+  lv_coord_t screen_w = disp ? lv_disp_get_hor_res(disp) : 480;
+  lv_coord_t max_w = screen_w - 32;
+  if (max_w < 190) max_w = 190;
+  if (width > max_w) width = max_w;
+  return width;
+}
+
 inline std::string climate_clean_option_token(std::string v) {
   v = climate_trim(v);
   while (!v.empty() && (v.front() == '\'' || v.front() == '"' ||
@@ -417,19 +449,8 @@ inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   return ctx->accent_color;
 }
 
-inline const char *climate_card_state_icon(ClimateControlCtx *ctx) {
-  if (!ctx) return nullptr;
-  if (!ctx->available)
-    return ctx->icon_off_glyph ? ctx->icon_off_glyph : find_icon("Thermostat");
-  if (ctx->hvac_mode == "off")
-    return ctx->show_target_when_off ? nullptr :
-      (ctx->icon_off_glyph ? ctx->icon_off_glyph : find_icon("Thermostat"));
-  return nullptr;
-}
-
-inline std::string climate_card_value(ClimateControlCtx *ctx) {
+inline std::string climate_card_target_value(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return "--";
-  if (climate_card_state_icon(ctx)) return "";
   if (ctx->has_low && ctx->has_high)
     return climate_format_tenths(ctx->low_tenths, ctx->precision) + "-" +
            climate_format_tenths(ctx->high_tenths, ctx->precision);
@@ -439,31 +460,39 @@ inline std::string climate_card_value(ClimateControlCtx *ctx) {
   return "--";
 }
 
+inline std::string climate_card_actual_value(ClimateControlCtx *ctx) {
+  if (!ctx || !ctx->available || !ctx->has_current) return "--";
+  return climate_format_tenths(ctx->current_tenths, ctx->precision);
+}
+
+inline std::string climate_card_value_with_unit(const std::string &value) {
+  if (value.empty() || value == "--") return "--";
+  return value + display_temperature_unit_symbol();
+}
+
+inline std::string climate_card_value(ClimateControlCtx *ctx) {
+  if (!ctx) return "--";
+  return ctx->number_display == "actual"
+    ? climate_card_actual_value(ctx)
+    : climate_card_target_value(ctx);
+}
+
 inline std::string climate_card_label(ClimateControlCtx *ctx) {
   if (!ctx) return "Climate";
-  if (climate_is_active(ctx)) return climate_action_label(ctx);
-  if (!ctx->configured_label.empty()) return ctx->configured_label;
-  if (!ctx->friendly_name.empty()) return ctx->friendly_name;
-  if (!ctx->entity_id.empty()) return ctx->entity_id;
-  return "Climate";
+  if (ctx->label_display == "status") return climate_action_label(ctx);
+  if (ctx->label_display == "actual") return climate_card_value_with_unit(climate_card_actual_value(ctx));
+  if (ctx->label_display == "target") return climate_card_value_with_unit(climate_card_target_value(ctx));
+  return ctx->configured_label.empty() ? "Climate" : ctx->configured_label;
 }
 
 inline void climate_update_card(ClimateControlCtx *ctx) {
   if (!ctx) return;
-  const char *state_icon = climate_card_state_icon(ctx);
   std::string value = climate_card_value(ctx);
   if (ctx->icon_lbl) {
-    if (state_icon) {
-      lv_label_set_text(ctx->icon_lbl, state_icon);
-      lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_move_foreground(ctx->icon_lbl);
-    } else {
-      lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    }
+    lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
   }
   if (ctx->sensor_container) {
-    if (state_icon) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
   if (ctx->value_lbl) lv_label_set_text(ctx->value_lbl, value.c_str());
   if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, (value.empty() || value == "--") ? "" : display_temperature_unit_symbol());
@@ -920,7 +949,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   }, LV_EVENT_CLICKED, nullptr);
 
   lv_obj_t *box = lv_obj_create(ui.menu_overlay);
-  lv_obj_set_width(box, kind == "hvac" ? 190 : 220);
+  lv_obj_set_width(box, climate_option_menu_width(*options, kind));
   lv_obj_set_height(box, LV_SIZE_CONTENT);
   lv_obj_set_style_bg_color(box, lv_color_hex(ctx->secondary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
@@ -950,11 +979,12 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_pad_right(btn, 0, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, climate_option_label(option).c_str());
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
     if (kind == "hvac") {
-      lv_obj_set_width(label, lv_pct(72));
+      lv_obj_set_width(label, lv_pct(78));
       lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
       if (selected) {
         lv_obj_t *check_lbl = lv_label_create(btn);
@@ -1464,7 +1494,8 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->configured_label = p.label;
   ctx->precision = parse_precision(p.precision);
   climate_apply_saved_range(ctx, p.precision);
-  ctx->show_target_when_off = cfg_option_enabled(p.options, "off_target");
+  ctx->label_display = normalize_climate_label_display(cfg_option_value(p.options, "label_display"));
+  ctx->number_display = normalize_climate_number_display(cfg_option_value(p.options, "number_display"));
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

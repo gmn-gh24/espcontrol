@@ -144,7 +144,8 @@ var SWITCH_CONFIRM_DEFAULT_NO = "No";
 var ALARM_PIN_ARM_OPTION = "pin_arm";
 var ALARM_PIN_DISARM_OPTION = "pin_disarm";
 var ALARM_ACTIONS_OPTION = "actions";
-var CLIMATE_OFF_TARGET_OPTION = "off_target";
+var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
+var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Security" },
   { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Home" },
@@ -281,19 +282,62 @@ function setSwitchConfirmationOptions(b, enabled, message, yesText, noText) {
   return b.options;
 }
 
+function normalizeClimateLabelDisplayMode(value) {
+  value = String(value || "").trim();
+  return ["label", "status", "actual", "target"].indexOf(value) >= 0 ? value : "label";
+}
+
+function normalizeClimateNumberDisplayMode(value) {
+  value = String(value || "").trim();
+  return value === "actual" ? "actual" : "target";
+}
+
 function normalizeClimateOptions(options) {
-  return configOptionEnabled(options, CLIMATE_OFF_TARGET_OPTION)
-    ? setConfigOption("", CLIMATE_OFF_TARGET_OPTION, true)
-    : "";
+  var labelMode = normalizeClimateLabelDisplayMode(
+    configOptionValue(options, CLIMATE_LABEL_DISPLAY_OPTION));
+  var numberMode = normalizeClimateNumberDisplayMode(
+    configOptionValue(options, CLIMATE_NUMBER_DISPLAY_OPTION));
+  var out = "";
+  if (labelMode !== "label") {
+    out = setConfigOptionValue(out, CLIMATE_LABEL_DISPLAY_OPTION, labelMode);
+  }
+  if (numberMode !== "target") {
+    out = setConfigOptionValue(out, CLIMATE_NUMBER_DISPLAY_OPTION, numberMode);
+  }
+  return out;
 }
 
-function climateOffDisplayMode(b) {
-  return configOptionEnabled(b && b.options, CLIMATE_OFF_TARGET_OPTION) ? "target" : "icon";
+function climateLabelDisplayMode(b) {
+  return normalizeClimateLabelDisplayMode(
+    configOptionValue(b && b.options, CLIMATE_LABEL_DISPLAY_OPTION));
 }
 
-function setClimateOffDisplayMode(b, mode) {
+function setClimateLabelDisplayMode(b, mode) {
   if (!b) return "";
-  b.options = setConfigOption("", CLIMATE_OFF_TARGET_OPTION, mode === "target");
+  var normalized = normalizeClimateLabelDisplayMode(mode);
+  b.options = setConfigOptionValue(
+    b.options,
+    CLIMATE_LABEL_DISPLAY_OPTION,
+    normalized === "label" ? "" : normalized
+  );
+  b.options = normalizeClimateOptions(b.options);
+  return b.options;
+}
+
+function climateNumberDisplayMode(b) {
+  return normalizeClimateNumberDisplayMode(
+    configOptionValue(b && b.options, CLIMATE_NUMBER_DISPLAY_OPTION));
+}
+
+function setClimateNumberDisplayMode(b, mode) {
+  if (!b) return "";
+  var normalized = normalizeClimateNumberDisplayMode(mode);
+  b.options = setConfigOptionValue(
+    b.options,
+    CLIMATE_NUMBER_DISPLAY_OPTION,
+    normalized === "target" ? "" : normalized
+  );
+  b.options = normalizeClimateOptions(b.options);
   return b.options;
 }
 

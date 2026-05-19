@@ -795,7 +795,7 @@ assertButtonRoundTrip(hooks, "climate card negative custom range", {
   precision: "1:-25:5",
 }, false);
 
-assertButtonRoundTrip(hooks, "climate card set temp when off", {
+assertButtonRoundTrip(hooks, "climate card display options", {
   entity: "climate.hallway",
   label: "Hallway",
   icon: "Thermostat",
@@ -804,7 +804,7 @@ assertButtonRoundTrip(hooks, "climate card set temp when off", {
   unit: "",
   type: "climate",
   precision: "1",
-  options: "off_target",
+  options: "label_display=status,number_display=actual",
 }, false);
 
 assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad", {
@@ -818,7 +818,7 @@ assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_ro
   precision: "",
 });
 
-assertButtonMigration(hooks, "climate clears unknown options", "climate.living_room;Living;Thermostat;Auto;;;climate;1;large_numbers", {
+assertButtonMigration(hooks, "climate clears legacy options", "climate.living_room;Living;Thermostat;Auto;;;climate;1;large_numbers,off_target", {
   entity: "climate.living_room",
   label: "Living",
   icon: "Thermostat",
@@ -1409,10 +1409,10 @@ assertSubpageRoundTrip(hooks, "climate subpage negative custom range", {
   ],
 }, true);
 
-assertSubpageRoundTrip(hooks, "climate subpage set temp when off", {
+assertSubpageRoundTrip(hooks, "climate subpage display options", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "1", options: "off_target" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "1", options: "label_display=target,number_display=actual" }),
   ],
 }, true);
 

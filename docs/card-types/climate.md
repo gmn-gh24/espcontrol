@@ -12,11 +12,15 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 
 1. Select a card and change its type to **Climate**.
 2. Enter the **Climate Entity**, for example `climate.living_room`.
-3. Set a **Label** if you want custom text. If left blank, the friendly name from Home Assistant is used.
-4. Choose an **Icon**.
-5. Choose **When Off**:
-   - **Icon** shows the chosen icon while the climate entity is off.
-   - **Set Temp** shows the saved target temperature while the climate entity is off.
+3. Set a **Label** if you want custom text. The default label is **Climate**.
+4. Choose **Label Display**:
+   - **Label** shows the card label.
+   - **Status** shows the current climate status, such as Off, Heating, Cooling, or Idle.
+   - **Actual Temp** shows the current measured temperature.
+   - **Target Temp** shows the target temperature.
+5. Choose **Number Display**:
+   - **Actual Temp** shows the current measured temperature as the large number.
+   - **Target Temp** shows the target temperature as the large number.
 6. Choose **Unit Precision**:
    - **10** shows whole numbers.
    - **10.2** shows one decimal place.
@@ -24,7 +28,7 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 
 ## How It Works on the Panel
 
-The card shows the current climate target and lights up when the climate entity is actively heating or cooling.
+The card always uses the large number area for a temperature, including when the climate entity is off. It lights up when the climate entity is actively heating or cooling.
 
 Tapping the card opens a climate control popup. From there, you can:
 

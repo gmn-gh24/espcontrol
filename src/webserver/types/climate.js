@@ -6,7 +6,7 @@ registerButtonType("climate", {
   labelPlaceholder: "e.g. Living Room",
   onSelect: function (b) {
     b.entity = "";
-    b.label = "";
+    b.label = "Climate";
     b.sensor = "";
     b.unit = "";
     b.precision = "";
@@ -40,35 +40,35 @@ registerButtonType("climate", {
     panel.appendChild(entityField.field);
 
     panel.appendChild(helpers.textField(
-      "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
+      "Label", helpers.idPrefix + "label", b.label, "Climate", "label", true).field);
 
-    var offDisplayMode = climateOffDisplayMode(b);
-    var offDisplayField = helpers.segmentControl([
-      ["icon", "Icon"],
-      ["target", "Set Temp"],
-    ], offDisplayMode, function (value) {
-      offDisplayMode = value;
-      offIconBtn.classList.toggle("active", value === "icon");
-      offTargetBtn.classList.toggle("active", value === "target");
-      iconSection.classList.toggle("sp-visible", value === "icon");
-      setClimateOffDisplayMode(b, value);
+    function setActive(buttons, value) {
+      for (var key in buttons) buttons[key].classList.toggle("active", key === value);
+    }
+
+    var labelDisplayField = helpers.segmentControl([
+      ["label", "Label"],
+      ["status", "Status"],
+      ["actual", "Actual Temp"],
+      ["target", "Target Temp"],
+    ], climateLabelDisplayMode(b), function (value) {
+      setActive(labelDisplayField.buttons, value);
+      setClimateLabelDisplayMode(b, value);
       helpers.saveField("options", b.options);
       scheduleRender();
     });
-    var offIconBtn = offDisplayField.buttons.icon;
-    var offTargetBtn = offDisplayField.buttons.target;
-    panel.appendChild(helpers.fieldWithControl("When Off", null, offDisplayField.segment));
+    panel.appendChild(helpers.fieldWithControl("Label Display", null, labelDisplayField.segment));
 
-    var iconSection = condField();
-    iconSection.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "climate-icon-picker", helpers.idPrefix + "climate-icon",
-      b.icon || "Thermostat", function (opt) {
-        b.icon = opt;
-        helpers.saveField("icon", opt);
-      }, "Icon"
-    ));
-    if (offDisplayMode === "icon") iconSection.classList.add("sp-visible");
-    panel.appendChild(iconSection);
+    var numberDisplayField = helpers.segmentControl([
+      ["actual", "Actual Temp"],
+      ["target", "Target Temp"],
+    ], climateNumberDisplayMode(b), function (value) {
+      setActive(numberDisplayField.buttons, value);
+      setClimateNumberDisplayMode(b, value);
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+    panel.appendChild(helpers.fieldWithControl("Number Display", null, numberDisplayField.segment));
 
     var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [
       ["", "10"],
@@ -121,25 +121,26 @@ registerButtonType("climate", {
     panel.appendChild(advanced);
   },
   renderPreview: function (b, helpers) {
-    var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Climate";
-    if (climateOffDisplayMode(b) === "target") {
-      var climateConfig = parseClimatePrecisionConfig(b.precision);
-      var prec = parseInt(climateConfig.precision || "0", 10) || 0;
-      var sampleVal = (20).toFixed(prec);
-      return {
-        iconHtml:
-          '<span class="sp-sensor-preview">' +
-            '<span class="sp-sensor-value">' + sampleVal + '</span>' +
-            '<span class="sp-sensor-unit">\u00B0</span>' +
-          '</span>',
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
-          helpers.escHtml(label) + '</span><span class="sp-type-badge mdi mdi-thermostat"></span></span>',
-      };
+    var climateConfig = parseClimatePrecisionConfig(b.precision);
+    var prec = parseInt(climateConfig.precision || "0", 10) || 0;
+    var actualVal = (21).toFixed(prec);
+    var targetVal = (20).toFixed(prec);
+    var numberVal = climateNumberDisplayMode(b) === "actual" ? actualVal : targetVal;
+    var labelMode = climateLabelDisplayMode(b);
+    var label = (b.label && b.label.trim()) || "Climate";
+    if (labelMode === "status") {
+      label = "Idle";
+    } else if (labelMode === "actual") {
+      label = actualVal + "\u00B0";
+    } else if (labelMode === "target") {
+      label = targetVal + "\u00B0";
     }
-    var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "thermostat";
     return {
-      iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
+      iconHtml:
+        '<span class="sp-sensor-preview">' +
+          '<span class="sp-sensor-value">' + numberVal + '</span>' +
+          '<span class="sp-sensor-unit">\u00B0</span>' +
+        '</span>',
       labelHtml:
         '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
         helpers.escHtml(label) + '</span><span class="sp-type-badge mdi mdi-thermostat"></span></span>',

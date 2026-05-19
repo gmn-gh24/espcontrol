@@ -134,6 +134,41 @@ inline bool cfg_option_token_present(const std::string &options, const char *nam
   return false;
 }
 
+inline std::string cfg_option_value(const std::string &options, const char *name) {
+  if (!name || !*name || options.empty()) return "";
+  std::string prefix = std::string(name) + "=";
+  size_t start = 0;
+  while (start <= options.length()) {
+    size_t end = options.find(',', start);
+    if (end == std::string::npos) end = options.length();
+    if (options.compare(start, prefix.length(), prefix) == 0) {
+      return decode_compact_field(options.substr(start + prefix.length(), end - start - prefix.length()));
+    }
+    start = end + 1;
+  }
+  return "";
+}
+
+inline std::string normalize_climate_label_display(const std::string &value) {
+  return (value == "status" || value == "actual" || value == "target") ? value : "label";
+}
+
+inline std::string normalize_climate_number_display(const std::string &value) {
+  return value == "actual" ? "actual" : "target";
+}
+
+inline std::string climate_card_options_normalized(const std::string &options) {
+  std::string label_display = normalize_climate_label_display(cfg_option_value(options, "label_display"));
+  std::string number_display = normalize_climate_number_display(cfg_option_value(options, "number_display"));
+  std::string out;
+  if (label_display != "label") out += "label_display=" + label_display;
+  if (number_display != "target") {
+    if (!out.empty()) out += ",";
+    out += "number_display=" + number_display;
+  }
+  return out;
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
@@ -185,7 +220,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.icon_on.clear();
-    p.options = cfg_option_token_present(p.options, "off_target") ? "off_target" : "";
+    p.options = climate_card_options_normalized(p.options);
   }
   if (p.type == "garage") {
     if (p.sensor != "open" && p.sensor != "close") p.sensor.clear();
@@ -258,21 +293,6 @@ inline ParsedCfg parse_cfg(const std::string &cfg) {
 
 inline bool cfg_option_enabled(const std::string &options, const char *name) {
   return cfg_option_token_present(options, name);
-}
-
-inline std::string cfg_option_value(const std::string &options, const char *name) {
-  if (!name || !*name || options.empty()) return "";
-  std::string prefix = std::string(name) + "=";
-  size_t start = 0;
-  while (start <= options.length()) {
-    size_t end = options.find(',', start);
-    if (end == std::string::npos) end = options.length();
-    if (options.compare(start, prefix.length(), prefix) == 0) {
-      return decode_compact_field(options.substr(start + prefix.length(), end - start - prefix.length()));
-    }
-    start = end + 1;
-  }
-  return "";
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {

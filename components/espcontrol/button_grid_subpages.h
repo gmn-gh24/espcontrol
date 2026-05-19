@@ -110,7 +110,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (b.type == "climate") {
     b.sensor.clear();
     b.unit.clear();
-    b.options = cfg_option_token_present(b.options, "off_target") ? "off_target" : "";
+    b.options = climate_card_options_normalized(b.options);
   }
   if (b.type == "garage") {
     if (b.sensor != "open" && b.sensor != "close") b.sensor.clear();
