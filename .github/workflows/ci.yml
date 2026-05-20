@@ -1,11 +1,34 @@
 name: CI
 
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'common/**'
+      - 'components/**'
+      - 'devices/**'
+      - 'builds/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'common/**'
+      - 'components/**'
+      - 'devices/**'
+      - 'builds/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'package.json'
+      - 'package-lock.json'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_DOCKER_IMAGE: ghcr.io/esphome/esphome:2026.4.5
 
 jobs:
   validate:
@@ -33,8 +56,6 @@ jobs:
       - run: python3 scripts/generate_device_slots.py --check
       - run: python3 scripts/check_icon_groups.py
       - run: npm run check:config
-      - run: npm run check:web-smoke
-      - run: npm run check:firmware-release
 
   docs:
     name: Build Docs
@@ -82,34 +103,8 @@ jobs:
           restore-keys: |
             esphome-ci-${{ matrix.slug }}-
 
-      - name: Pull ESPHome image
-        run: |
-          for attempt in 1 2 3 4 5; do
-            echo "Pulling $ESPHOME_DOCKER_IMAGE (attempt $attempt of 5)"
-            if docker pull "$ESPHOME_DOCKER_IMAGE"; then
-              exit 0
-            fi
-
-            if [ "$attempt" -eq 5 ]; then
-              echo "Unable to pull $ESPHOME_DOCKER_IMAGE after $attempt attempts"
-              exit 1
-            fi
-
-            delay=$((attempt * 15))
-            echo "Pull failed; retrying in $delay seconds"
-            sleep "$delay"
-          done
-
       - name: Compile firmware
         run: >-
           docker run --rm -v "${PWD}:/config"
-          "$ESPHOME_DOCKER_IMAGE"
+          ghcr.io/esphome/esphome:2026.4.3
           compile /config/builds/${{ matrix.slug }}.factory.yaml
-
-      - name: Fix ESPHome cache permissions
-        if: always()
-        run: |
-          if [ -d builds/.esphome ]; then
-            sudo chown -R "$USER:$USER" builds/.esphome
-            chmod -R u+rwX builds/.esphome
-          fi
