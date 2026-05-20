@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdio>
 #include <cmath>
+#include "esphome/components/lvgl/lvgl_esphome.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
 
@@ -249,6 +250,44 @@ inline void refresh_temp_label_values(lv_obj_t *label, lv_obj_t *main_page_obj,
     format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
   }
   lv_label_set_text(label, buf);
+}
+
+// ── Screensaver layout helpers ──────────────────────────────────────
+
+inline void screensaver_fill_screen(lv_obj_t *obj) {
+  if (!obj) return;
+  lv_obj_set_pos(obj, 0, 0);
+  lv_obj_set_size(obj, lv_pct(100), lv_pct(100));
+}
+
+inline void refresh_screensaver_fullscreen(lv_obj_t *clock_overlay,
+                                           lv_obj_t *dim_guard) {
+  screensaver_fill_screen(clock_overlay);
+  screensaver_fill_screen(dim_guard);
+}
+
+inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
+                                             int minute) {
+  if (!label) return;
+  if (!overlay) overlay = lv_obj_get_parent(label);
+  screensaver_fill_screen(overlay);
+  if (overlay) lv_obj_update_layout(overlay);
+
+  lv_coord_t screen_w = overlay ? lv_obj_get_width(overlay) : 0;
+  lv_coord_t screen_h = overlay ? lv_obj_get_height(overlay) : 0;
+  lv_disp_t *disp = lv_disp_get_default();
+  if (screen_w <= 0 && disp) screen_w = lv_disp_get_hor_res(disp);
+  if (screen_h <= 0 && disp) screen_h = lv_disp_get_ver_res(disp);
+  if (screen_w <= 0) screen_w = 480;
+  if (screen_h <= 0) screen_h = 480;
+
+  lv_obj_update_layout(label);
+  lv_coord_t w = lv_obj_get_width(label);
+  lv_coord_t h = lv_obj_get_height(label);
+  int ox = (minute * 7) % 61 - 30;
+  int oy = (minute * 13) % 41 - 20;
+  lv_obj_set_pos(label, screen_w / 2 + ox - w / 2,
+                 screen_h / 2 + oy - h / 2);
 }
 
 // ── Firmware update interval ─────────────────────────────────────────

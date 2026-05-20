@@ -538,6 +538,7 @@ script:
           value: 'true'
       - lvgl.resume:
       - script.execute: hide_clock_view
+      - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
       - lvgl.widget.show: dim_screensaver_touch_guard
       - light.turn_on:
           id: display_backlight
@@ -615,13 +616,7 @@ script:
               snprintf(buf, sizeof(buf), "%02d:%02d", hr, mn);
             }
             lv_label_set_text(id(clock_label), buf);
-            lv_obj_update_layout(id(clock_label));
-            lv_coord_t w = lv_obj_get_width(id(clock_label));
-            lv_coord_t h = lv_obj_get_height(id(clock_label));
-            int cx = ${clock_cx}, cy = ${clock_cy};
-            int ox = (time.minute * 7) % 61 - 30;
-            int oy = (time.minute * 13) % 41 - 20;
-            lv_obj_set_pos(id(clock_label), cx + ox - w/2, cy + oy - h/2);
+            position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
           }
       - script.execute: backlight_fade_current_ui_to_black
       - script.wait: backlight_fade_current_ui_to_black
@@ -716,10 +711,4 @@ interval:
             snprintf(buf, sizeof(buf), "%02d:%02d", hr, mn);
           }
           lv_label_set_text(id(clock_label), buf);
-          lv_obj_update_layout(id(clock_label));
-          lv_coord_t w = lv_obj_get_width(id(clock_label));
-          lv_coord_t h = lv_obj_get_height(id(clock_label));
-          int cx = ${clock_cx}, cy = ${clock_cy};
-          int ox = (time.minute * 7) % 61 - 30;
-          int oy = (time.minute * 13) % 41 - 20;
-          lv_obj_set_pos(id(clock_label), cx + ox - w/2, cy + oy - h/2);
+          position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
