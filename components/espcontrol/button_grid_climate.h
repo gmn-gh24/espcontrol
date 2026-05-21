@@ -19,7 +19,6 @@ constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX = 42;
 constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTON_GAP_REF_PX = 16;
 constexpr uint16_t CLIMATE_MODAL_STEP_ICON_ZOOM = 214;
 constexpr int CLIMATE_OPTION_ROW_WIDTH_PERCENT = 88;
-constexpr lv_coord_t CLIMATE_MODAL_OFF_TEXT_DOWN_REF_PX = 24;
 
 struct ClimateControlCtx {
   std::string entity_id;
@@ -1147,8 +1146,10 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     if (ctx->edit_high) lv_obj_add_state(ui.high_btn, LV_STATE_CHECKED);
     else lv_obj_clear_state(ui.high_btn, LV_STATE_CHECKED);
   }
-  climate_set_obj_visible(ui.minus_btn, temp_enabled);
-  climate_set_obj_visible(ui.plus_btn, temp_enabled);
+  climate_set_obj_visible(ui.minus_btn, true);
+  climate_set_obj_visible(ui.plus_btn, true);
+  apply_control_availability(ui.minus_btn, ui.minus_btn, temp_enabled);
+  apply_control_availability(ui.plus_btn, ui.plus_btn, temp_enabled);
   bool show_chips = ctx->available &&
     (!ctx->hvac_modes.empty() || !ctx->preset_modes.empty() ||
      !ctx->fan_modes.empty() || !ctx->swing_modes.empty());
@@ -1176,9 +1177,6 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   lv_coord_t value_h = ui.target_row ? lv_obj_get_height(ui.target_row) : 0;
   lv_coord_t value_center_y = layout.value_center_y -
     control_modal_scaled_px(22, layout.short_side);
-  if (ctx->available && ctx->hvac_mode == "off") {
-    value_center_y += control_modal_scaled_px(CLIMATE_MODAL_OFF_TEXT_DOWN_REF_PX, layout.short_side);
-  }
   lv_coord_t controls_center_y = layout.controls_center_y -
     control_modal_scaled_px(CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX, layout.short_side);
   lv_coord_t title_center_y = value_center_y -
