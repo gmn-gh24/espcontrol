@@ -45,7 +45,7 @@ font:
   # Climate modal option titles, smaller than the option value line
   - file: "gfonts://Roboto"
     id: climate_option_title_font_600
-    size: 18
+    size: 20
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
