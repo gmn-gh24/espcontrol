@@ -246,6 +246,7 @@ const ICON_GROUPS = {
   'Oven': 'Appliances',
   'Washing Machine': 'Appliances',
   'Washing Machine Off': 'Appliances',
+  'Silverware': 'Appliances',
 
   'Cast': 'Media & Entertainment',
   'Gamepad': 'Media & Entertainment',
@@ -278,6 +279,7 @@ const ICON_GROUPS = {
   'Water Boiler': 'Water & Outdoors',
   'Water Boiler Off': 'Water & Outdoors',
   'Water Percent': 'Water & Outdoors',
+  'Shower Head': 'Water & Outdoors',
 
   'Application': 'Network & Tech',
   'Bluetooth': 'Network & Tech',
@@ -288,9 +290,17 @@ const ICON_GROUPS = {
   'Router': 'Network & Tech',
   'Router Network': 'Network & Tech',
 
+  'Bathtub': 'Rooms & Furniture',
   'Bed': 'Rooms & Furniture',
+  'Bed King': 'Rooms & Furniture',
+  'Bed Queen': 'Rooms & Furniture',
+  'Chair Rolling': 'Rooms & Furniture',
+  'Desk': 'Rooms & Furniture',
   'Sofa': 'Rooms & Furniture',
+  'Sofa Outline': 'Rooms & Furniture',
+  'Stove': 'Rooms & Furniture',
   'Table': 'Rooms & Furniture',
+  'Table Chair': 'Rooms & Furniture',
   'Toilet': 'Rooms & Furniture',
 
   'Car Electric': 'Vehicles',

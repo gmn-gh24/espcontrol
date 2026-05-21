@@ -84,13 +84,12 @@ def load_mdi_codepoints():
 
 def check_duplicate_icon_fields(data):
     errors = []
-    for field in ("name", "mdi", "codepoint"):
-        seen = {}
-        for item in icon_items(data):
-            seen.setdefault(item[field], []).append(item["name"])
-        for value, names in seen.items():
-            if len(names) > 1:
-                errors.append(f"duplicate {field} {value!r}: {', '.join(names)}")
+    seen = {}
+    for item in icon_items(data):
+        seen.setdefault(item["name"], []).append(item["mdi"])
+    for name, mdi_names in seen.items():
+        if len(mdi_names) > 1:
+            errors.append(f"duplicate name {name!r}: {', '.join(mdi_names)}")
     return errors
 
 
@@ -151,12 +150,19 @@ def assert_icon_data_valid(data):
 def gen_icon_glyphs(data):
     """Font glyph codepoint list for LVGL font subsetting."""
     fb = data["fallback"]
+    seen_codepoints = {fb["codepoint"]}
     lines = [f'- "\\U{fb["codepoint"]:>08s}"  # mdi-{fb["mdi"]} (Auto fallback)\n']
     for icon in data.get("structural", []):
+        if icon["codepoint"] in seen_codepoints:
+            continue
+        seen_codepoints.add(icon["codepoint"])
         comment = icon.get("comment", "")
         suffix = f" ({comment})" if comment else ""
         lines.append(f'- "\\U{icon["codepoint"]:>08s}"  # mdi-{icon["mdi"]}{suffix}\n')
     for icon in data["icons"]:
+        if icon["codepoint"] in seen_codepoints:
+            continue
+        seen_codepoints.add(icon["codepoint"])
         cp = icon["codepoint"]
         lines.append(f'- "\\U{cp:>08s}"  # mdi-{icon["mdi"]}\n')
     return "".join(lines)

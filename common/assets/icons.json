@@ -176,9 +176,24 @@
       "mdi": "battery-unknown"
     },
     {
+      "name": "Bathtub",
+      "codepoint": "F1818",
+      "mdi": "bathtub"
+    },
+    {
       "name": "Bed",
       "codepoint": "F02E3",
       "mdi": "bed"
+    },
+    {
+      "name": "Bed King",
+      "codepoint": "F0FD2",
+      "mdi": "bed-king"
+    },
+    {
+      "name": "Bed Queen",
+      "codepoint": "F0FD0",
+      "mdi": "bed-queen"
     },
     {
       "name": "Bell",
@@ -261,6 +276,11 @@
       "mdi": "check"
     },
     {
+      "name": "Chair Rolling",
+      "codepoint": "F0F48",
+      "mdi": "chair-rolling"
+    },
+    {
       "name": "Chevron Down",
       "codepoint": "F0140",
       "mdi": "chevron-down"
@@ -314,6 +334,11 @@
       "name": "Delete Outline",
       "codepoint": "F09E7",
       "mdi": "delete-outline"
+    },
+    {
+      "name": "Desk",
+      "codepoint": "F1239",
+      "mdi": "desk"
     },
     {
       "name": "Desk Lamp",
@@ -892,6 +917,11 @@
     },
     {
       "name": "Shower",
+      "codepoint": "F09A0",
+      "mdi": "shower"
+    },
+    {
+      "name": "Shower Head",
       "codepoint": "F09A1",
       "mdi": "shower-head"
     },
@@ -926,9 +956,19 @@
       "mdi": "snowflake-thermometer"
     },
     {
+      "name": "Silverware",
+      "codepoint": "F04A3",
+      "mdi": "silverware"
+    },
+    {
       "name": "Sofa",
       "codepoint": "F04B9",
       "mdi": "sofa"
+    },
+    {
+      "name": "Sofa Outline",
+      "codepoint": "F156D",
+      "mdi": "sofa-outline"
     },
     {
       "name": "Solar Panel",
@@ -981,6 +1021,11 @@
       "mdi": "string-lights-off"
     },
     {
+      "name": "Stove",
+      "codepoint": "F04DE",
+      "mdi": "stove"
+    },
+    {
       "name": "Swap Horizontal",
       "codepoint": "F04E1",
       "mdi": "swap-horizontal"
@@ -1009,6 +1054,11 @@
       "name": "Table",
       "codepoint": "F05BC",
       "mdi": "table-furniture"
+    },
+    {
+      "name": "Table Chair",
+      "codepoint": "F1061",
+      "mdi": "table-chair"
     },
     {
       "name": "Television",
