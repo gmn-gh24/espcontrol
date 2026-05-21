@@ -59,7 +59,6 @@ struct AlarmControlModalUi {
   lv_obj_t *mode_label[3] = {};
   lv_obj_t *arming_view = nullptr;
   lv_obj_t *arming_title = nullptr;
-  lv_obj_t *arming_subtitle = nullptr;
   lv_obj_t *arming_icon_bg = nullptr;
   lv_obj_t *arming_icon = nullptr;
   lv_obj_t *arming_disarm_btn = nullptr;
@@ -587,7 +586,6 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   alarm_control_set_hidden(ui.arming_view, !show_arming);
   if (ui.arming_view) {
     if (ui.arming_title) lv_label_set_text(ui.arming_title, alarm_state_label(ctx->state).c_str());
-    if (ui.arming_subtitle) lv_label_set_text(ui.arming_subtitle, ctx->label.c_str());
     ui.arming_disarm_action.card = ctx;
     ui.arming_disarm_action.mode = "disarm";
     ui.arming_disarm_action.requires_pin = alarm_action_requires_pin(ctx->options, "disarm");
@@ -921,16 +919,6 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   apply_width_compensation(ui.arming_title, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_set_width(ui.arming_title, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_title, LV_ALIGN_TOP_MID, 0, layout.panel_h / 12);
-
-  ui.arming_subtitle = lv_label_create(ui.arming_view);
-  lv_label_set_text(ui.arming_subtitle, ctx ? ctx->label.c_str() : "");
-  lv_obj_set_style_text_color(ui.arming_subtitle, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.arming_subtitle, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (label_font) lv_obj_set_style_text_font(ui.arming_subtitle, label_font, LV_PART_MAIN);
-  lv_label_set_long_mode(ui.arming_subtitle, LV_LABEL_LONG_DOT);
-  apply_width_compensation(ui.arming_subtitle, ctx ? ctx->width_compensation_percent : 100);
-  lv_obj_set_width(ui.arming_subtitle, layout.panel_w - layout.inset * 2);
-  lv_obj_align(ui.arming_subtitle, LV_ALIGN_TOP_MID, 0, layout.panel_h / 5);
 
   lv_coord_t icon_size = layout.short_side * 64 / 100;
   if (icon_size < control_modal_scaled_px(120, layout.short_side))
