@@ -16,7 +16,9 @@ substitutions:
 # ---------------------------------------------------------------------------
 esp32:
   variant: esp32p4
-  flash_size: 32MB
+  # Keep OTA app slots inside the first 16MB. Some existing ESP32-P4 86
+  # bootloaders cannot boot OTA images that cross the 16MB flash boundary.
+  flash_size: 16MB
   cpu_frequency: 360MHZ
   engineering_sample: true
   # ESPHome 2026.5 tightened ESP32 task watchdog handling. The P4 display
