@@ -57,7 +57,15 @@ struct AlarmControlModalUi {
   lv_obj_t *mode_btn[3] = {};
   lv_obj_t *mode_icon[3] = {};
   lv_obj_t *mode_label[3] = {};
+  lv_obj_t *arming_view = nullptr;
+  lv_obj_t *arming_title = nullptr;
+  lv_obj_t *arming_subtitle = nullptr;
+  lv_obj_t *arming_icon_bg = nullptr;
+  lv_obj_t *arming_icon = nullptr;
+  lv_obj_t *arming_disarm_btn = nullptr;
+  lv_obj_t *arming_disarm_label = nullptr;
   AlarmActionCtx actions[3];
+  AlarmActionCtx arming_disarm_action;
   AlarmCardCtx *active = nullptr;
 };
 
@@ -254,6 +262,16 @@ inline std::string alarm_state_control_mode(const std::string &state) {
 }
 
 inline void alarm_control_update_modal(AlarmCardCtx *ctx);
+
+inline bool alarm_control_modal_shows_arming(AlarmCardCtx *ctx) {
+  return ctx && ctx->state == "arming";
+}
+
+inline void alarm_control_set_hidden(lv_obj_t *obj, bool hidden) {
+  if (!obj) return;
+  if (hidden) lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+}
 
 inline void alarm_clear_pending_action(AlarmCardCtx *ctx) {
   if (!ctx) return;
@@ -564,6 +582,17 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
 
+  bool show_arming = alarm_control_modal_shows_arming(ctx);
+  alarm_control_set_hidden(ui.rail, show_arming);
+  alarm_control_set_hidden(ui.arming_view, !show_arming);
+  if (ui.arming_view) {
+    if (ui.arming_title) lv_label_set_text(ui.arming_title, alarm_state_label(ctx->state).c_str());
+    if (ui.arming_subtitle) lv_label_set_text(ui.arming_subtitle, ctx->label.c_str());
+    ui.arming_disarm_action.card = ctx;
+    ui.arming_disarm_action.mode = "disarm";
+    ui.arming_disarm_action.requires_pin = alarm_action_requires_pin(ctx->options, "disarm");
+  }
+
   std::string active_mode = alarm_state_control_mode(
     alarm_effective_state(ctx->state, ctx->arm_mode));
   static const char *modes[3] = {"home", "away", "disarm"};
@@ -864,6 +893,95 @@ inline lv_obj_t *alarm_control_create_mode_button(
   return btn;
 }
 
+inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
+                                             AlarmCardCtx *ctx,
+                                             const ControlModalLayout &layout,
+                                             const lv_font_t *icon_font,
+                                             const lv_font_t *label_font) {
+  ui.arming_view = lv_obj_create(ui.panel);
+  lv_obj_set_size(ui.arming_view, layout.panel_w, layout.panel_h);
+  lv_obj_set_style_bg_opa(ui.arming_view, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arming_view, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.arming_view, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.arming_view, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.arming_view, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ui.arming_view, LV_OBJ_FLAG_HIDDEN);
+
+  ui.arming_title = lv_label_create(ui.arming_view);
+  lv_label_set_text(ui.arming_title, "Arming");
+  lv_obj_set_style_text_color(ui.arming_title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.arming_title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (label_font) lv_obj_set_style_text_font(ui.arming_title, label_font, LV_PART_MAIN);
+  lv_obj_set_style_transform_zoom(ui.arming_title, 260, LV_PART_MAIN);
+  apply_width_compensation(ui.arming_title, ctx ? ctx->width_compensation_percent : 100);
+  lv_obj_set_width(ui.arming_title, layout.panel_w - layout.inset * 2);
+  lv_obj_align(ui.arming_title, LV_ALIGN_TOP_MID, 0, layout.panel_h / 12);
+
+  ui.arming_subtitle = lv_label_create(ui.arming_view);
+  lv_label_set_text(ui.arming_subtitle, ctx ? ctx->label.c_str() : "");
+  lv_obj_set_style_text_color(ui.arming_subtitle, lv_color_hex(DARK_TEXT_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.arming_subtitle, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (label_font) lv_obj_set_style_text_font(ui.arming_subtitle, label_font, LV_PART_MAIN);
+  lv_label_set_long_mode(ui.arming_subtitle, LV_LABEL_LONG_DOT);
+  apply_width_compensation(ui.arming_subtitle, ctx ? ctx->width_compensation_percent : 100);
+  lv_obj_set_width(ui.arming_subtitle, layout.panel_w - layout.inset * 2);
+  lv_obj_align(ui.arming_subtitle, LV_ALIGN_TOP_MID, 0, layout.panel_h / 5);
+
+  lv_coord_t icon_size = layout.short_side * 64 / 100;
+  if (icon_size < control_modal_scaled_px(120, layout.short_side))
+    icon_size = control_modal_scaled_px(120, layout.short_side);
+  if (icon_size > layout.panel_w - layout.inset * 2)
+    icon_size = layout.panel_w - layout.inset * 2;
+  lv_coord_t icon_y = layout.panel_h * 34 / 100;
+  ui.arming_icon_bg = lv_obj_create(ui.arming_view);
+  lv_obj_set_size(ui.arming_icon_bg, icon_size, icon_size);
+  apply_width_compensation(ui.arming_icon_bg, ctx ? ctx->width_compensation_percent : 100);
+  lv_obj_set_style_radius(ui.arming_icon_bg, icon_size / 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.arming_icon_bg, lv_color_hex(0x51371D), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.arming_icon_bg, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arming_icon_bg, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.arming_icon_bg, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.arming_icon_bg, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_pos(ui.arming_icon_bg, (layout.panel_w - icon_size) / 2, icon_y);
+
+  ui.arming_icon = lv_label_create(ui.arming_icon_bg);
+  lv_label_set_text(ui.arming_icon, find_icon("Security"));
+  lv_obj_set_style_text_color(ui.arming_icon, lv_color_hex(ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.arming_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (icon_font) lv_obj_set_style_text_font(ui.arming_icon, icon_font, LV_PART_MAIN);
+  lv_obj_set_style_transform_zoom(ui.arming_icon, 320, LV_PART_MAIN);
+  apply_width_compensation(ui.arming_icon, ctx ? ctx->width_compensation_percent : 100);
+  lv_obj_center(ui.arming_icon);
+
+  lv_coord_t disarm_w = layout.panel_w * 58 / 100;
+  if (disarm_w < control_modal_scaled_px(160, layout.short_side))
+    disarm_w = control_modal_scaled_px(160, layout.short_side);
+  if (disarm_w > layout.panel_w - layout.inset * 2)
+    disarm_w = layout.panel_w - layout.inset * 2;
+  lv_coord_t disarm_h = layout.short_side * 22 / 100;
+  if (disarm_h < control_modal_scaled_px(68, layout.short_side))
+    disarm_h = control_modal_scaled_px(68, layout.short_side);
+  if (disarm_h > layout.panel_h / 5) disarm_h = layout.panel_h / 5;
+  ui.arming_disarm_btn = control_modal_create_round_button(
+    ui.arming_view, disarm_h, "Disarm", label_font,
+    DARK_BORDER, DARK_BACKGROUND_TERTIARY,
+    ctx ? ctx->width_compensation_percent : 100);
+  lv_obj_set_size(ui.arming_disarm_btn, disarm_w, disarm_h);
+  lv_obj_set_style_radius(ui.arming_disarm_btn, disarm_h / 2, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arming_disarm_btn, 0, LV_PART_MAIN);
+  ui.arming_disarm_label = lv_obj_get_child(ui.arming_disarm_btn, 0);
+  if (ui.arming_disarm_label) {
+    lv_obj_set_style_text_color(ui.arming_disarm_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_center(ui.arming_disarm_label);
+  }
+  lv_obj_align(ui.arming_disarm_btn, LV_ALIGN_BOTTOM_MID, 0, -layout.panel_h / 14);
+  ui.arming_disarm_action.card = ctx;
+  ui.arming_disarm_action.mode = "disarm";
+  ui.arming_disarm_action.requires_pin = ctx ? alarm_action_requires_pin(ctx->options, "disarm") : true;
+  lv_obj_add_event_cb(ui.arming_disarm_btn, alarm_control_mode_cb, LV_EVENT_CLICKED,
+    &ui.arming_disarm_action);
+}
+
 inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
   if (!ctx || !ctx->available) return;
   media_volume_hide_modal();
@@ -947,6 +1065,7 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
     lv_obj_add_event_cb(ui.mode_btn[i], alarm_control_mode_cb, LV_EVENT_CLICKED, &ui.actions[i]);
   }
 
+  alarm_control_create_arming_view(ui, ctx, layout, icon_font, label_font);
   alarm_control_update_modal(ctx);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
