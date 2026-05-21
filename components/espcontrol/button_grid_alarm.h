@@ -26,7 +26,6 @@ struct AlarmCardCtx {
   int width_compensation_percent = 100;
   int grid_cols = 3;
   bool available = false;
-  uint32_t state_changed_ms = 0;
 };
 
 struct AlarmActionCtx {
@@ -48,15 +47,12 @@ struct AlarmControlModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
-  lv_obj_t *title_lbl = nullptr;
-  lv_obj_t *age_lbl = nullptr;
   lv_obj_t *rail = nullptr;
   lv_obj_t *mode_btn[3] = {};
   lv_obj_t *mode_icon[3] = {};
   lv_obj_t *mode_label[3] = {};
   AlarmActionCtx actions[3];
   AlarmCardCtx *active = nullptr;
-  lv_timer_t *timer = nullptr;
 };
 
 struct AlarmToastUi {
@@ -224,9 +220,6 @@ inline void alarm_set_card_state_colors(AlarmCardCtx *ctx, uint32_t checked_colo
 
 inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) {
   if (!ctx || !ctx->btn) return;
-  if (ctx->state_changed_ms == 0 || state != ctx->state) {
-    ctx->state_changed_ms = esphome::millis();
-  }
   ctx->state = state;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
@@ -418,16 +411,6 @@ inline void send_alarm_action(AlarmActionCtx *action, const std::string &code) {
   esphome::api::global_api_server->send_homeassistant_action(req);
 }
 
-inline std::string alarm_elapsed_text(AlarmCardCtx *ctx) {
-  if (!ctx || ctx->state_changed_ms == 0) return "";
-  uint32_t elapsed = (esphome::millis() - ctx->state_changed_ms) / 1000;
-  if (elapsed == 0) return "Just now";
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%lu second%s ago",
-    static_cast<unsigned long>(elapsed), elapsed == 1 ? "" : "s");
-  return std::string(buf);
-}
-
 inline uint32_t alarm_control_active_color(AlarmCardCtx *ctx, const std::string &mode) {
   if (mode == "disarm") return DARK_CONTROL_NEUTRAL;
   return ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR;
@@ -436,12 +419,6 @@ inline uint32_t alarm_control_active_color(AlarmCardCtx *ctx, const std::string 
 inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-
-  std::string state_label = alarm_state_label(ctx->state);
-  if (ui.title_lbl) lv_label_set_text(ui.title_lbl, state_label.c_str());
-
-  std::string elapsed = alarm_elapsed_text(ctx);
-  if (ui.age_lbl) lv_label_set_text(ui.age_lbl, elapsed.c_str());
 
   std::string active_mode = alarm_state_control_mode(ctx->state);
   static const char *modes[3] = {"home", "away", "disarm"};
@@ -458,14 +435,8 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   }
 }
 
-inline void alarm_control_timer_cb(lv_timer_t *) {
-  AlarmControlModalUi &ui = alarm_control_modal_ui();
-  if (ui.active) alarm_control_update_modal(ui.active);
-}
-
 inline void alarm_control_hide_modal() {
   AlarmControlModalUi &ui = alarm_control_modal_ui();
-  if (ui.timer) lv_timer_del(ui.timer);
   if (ui.overlay) lv_obj_del(ui.overlay);
   ui = AlarmControlModalUi();
 }
@@ -775,35 +746,15 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
     alarm_control_hide_modal();
   }, LV_EVENT_CLICKED, nullptr);
 
-  ui.title_lbl = lv_label_create(ui.panel);
-  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (label_font) lv_obj_set_style_text_font(ui.title_lbl, label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
-  lv_obj_set_width(ui.title_lbl, layout.panel_w - layout.inset * 2);
-  lv_label_set_long_mode(ui.title_lbl, LV_LABEL_LONG_CLIP);
-
-  ui.age_lbl = lv_label_create(ui.panel);
-  lv_obj_set_style_text_color(ui.age_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.age_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (label_font) lv_obj_set_style_text_font(ui.age_lbl, label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.age_lbl, ctx->width_compensation_percent);
-  lv_obj_set_width(ui.age_lbl, layout.panel_w - layout.inset * 2);
-
-  lv_coord_t title_y = layout.inset + control_modal_scaled_px(10, layout.short_side);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y);
-  lv_obj_align(ui.age_lbl, LV_ALIGN_TOP_MID, 0,
-    title_y + control_modal_scaled_px(56, layout.short_side));
-
-  lv_coord_t rail_w = layout.panel_w * 46 / 100;
+  lv_coord_t rail_w = layout.panel_w * 52 / 100;
   if (rail_w < control_modal_scaled_px(156, layout.short_side))
     rail_w = control_modal_scaled_px(156, layout.short_side);
   if (rail_w > layout.panel_w - layout.inset * 2) rail_w = layout.panel_w - layout.inset * 2;
-  lv_coord_t rail_h = layout.panel_h * 68 / 100;
+  lv_coord_t rail_h = layout.panel_h - layout.inset * 2;
   if (rail_h < control_modal_scaled_px(300, layout.short_side))
     rail_h = control_modal_scaled_px(300, layout.short_side);
-  if (rail_h > layout.panel_h - control_modal_scaled_px(170, layout.short_side))
-    rail_h = layout.panel_h - control_modal_scaled_px(170, layout.short_side);
+  if (rail_h > layout.panel_h - layout.inset * 2)
+    rail_h = layout.panel_h - layout.inset * 2;
   if (rail_h < control_modal_scaled_px(240, layout.short_side))
     rail_h = control_modal_scaled_px(240, layout.short_side);
 
@@ -817,7 +768,7 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.rail, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.rail, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.rail, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_align(ui.rail, LV_ALIGN_BOTTOM_MID, 0, -layout.inset);
+  lv_obj_align(ui.rail, LV_ALIGN_CENTER, 0, 0);
 
   static const char *modes[3] = {"home", "away", "disarm"};
   lv_coord_t btn_h = rail_h / 3;
@@ -833,7 +784,6 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
     lv_obj_add_event_cb(ui.mode_btn[i], alarm_control_mode_cb, LV_EVENT_CLICKED, &ui.actions[i]);
   }
 
-  ui.timer = lv_timer_create(alarm_control_timer_cb, 1000, nullptr);
   alarm_control_update_modal(ctx);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
