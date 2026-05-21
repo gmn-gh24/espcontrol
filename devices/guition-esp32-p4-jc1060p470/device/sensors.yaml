@@ -48,7 +48,6 @@ script:
           cfg.wrap_tall_labels = true;
           cfg.volume_width_compensation_percent = 95;
           cfg.icon_font = id(icon_font_600)->get_lv_font();
-          cfg.alarm_arming_icon_font = id(alarm_arming_icon_font_600)->get_lv_font();
           cfg.sp_sensor_font = id(statistics_font_600)->get_lv_font();
           cfg.sp_large_sensor_font = id(statistics_font_600_xl)->get_lv_font();
           cfg.large_sensor_unit_offset_percent = -10;
@@ -108,7 +107,6 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.volume_width_compensation_percent = 95;
             cfg.icon_font = id(icon_font_600)->get_lv_font();
-            cfg.alarm_arming_icon_font = id(alarm_arming_icon_font_600)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_600)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_600_xl)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
@@ -201,7 +199,6 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.volume_width_compensation_percent = 95;
             cfg.icon_font = id(icon_font_600)->get_lv_font();
-            cfg.alarm_arming_icon_font = id(alarm_arming_icon_font_600)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_600)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_600_xl)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;

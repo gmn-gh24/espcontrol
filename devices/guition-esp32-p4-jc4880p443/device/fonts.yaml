@@ -14,14 +14,6 @@ font:
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
-  # Alarm arming screen icon: dedicated 3x security glyph
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: alarm_arming_icon_font_480
-    size: 186
-    bpp: 4
-    glyphs:
-      - "\U000F068A"  # mdi-security
-
   # Button labels (31px)
   - file: "gfonts://Roboto"
     id: label_font_lg

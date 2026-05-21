@@ -41,7 +41,6 @@ esphome:
             cfg.color_correction_green_percent = 100;
             cfg.color_correction_blue_percent = 104;
             cfg.icon_font = id(icon_font_md_square)->get_lv_font();
-            cfg.alarm_arming_icon_font = id(alarm_arming_icon_font_md_square)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_md_square)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_md_square_xl)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
@@ -122,7 +121,6 @@ esphome:
             cfg.color_correction_green_percent = 100;
             cfg.color_correction_blue_percent = 104;
             cfg.icon_font = id(icon_font_md_square)->get_lv_font();
-            cfg.alarm_arming_icon_font = id(alarm_arming_icon_font_md_square)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_md_square)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_md_square_xl)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;

@@ -76,7 +76,6 @@
       "firmware": {
         "fonts": {
           "icon": "icon_font_600",
-          "alarmArmingIcon": "alarm_arming_icon_font_600",
           "sensor": "statistics_font_600",
           "largeSensor": "statistics_font_600_xl",
           "mediaTitle": "media_title_font",
@@ -161,7 +160,6 @@
       "firmware": {
         "fonts": {
           "icon": "icon_font_480",
-          "alarmArmingIcon": "alarm_arming_icon_font_480",
           "sensor": "statistics_font_lg",
           "largeSensor": "statistics_font_lg_xl",
           "mediaTitle": "media_title_font_lg",
@@ -244,7 +242,6 @@
       "firmware": {
         "fonts": {
           "icon": "icon_font_800",
-          "alarmArmingIcon": "alarm_arming_icon_font_800",
           "sensor": "statistics_font_lt",
           "largeSensor": "statistics_font_lt_xl",
           "mediaTitle": "media_title_font_lt",
@@ -328,7 +325,6 @@
       "firmware": {
         "fonts": {
           "icon": "icon_font_md_square",
-          "alarmArmingIcon": "alarm_arming_icon_font_md_square",
           "sensor": "statistics_font_md_square",
           "largeSensor": "statistics_font_md_square_xl",
           "mediaTitle": "media_title_font_md_square",
@@ -421,7 +417,6 @@
       "firmware": {
         "fonts": {
           "icon": "icon_font_sm",
-          "alarmArmingIcon": "alarm_arming_icon_font_sm",
           "sensor": "statistics_font_sm",
           "largeSensor": "statistics_font_sm_xl",
           "mediaTitle": "media_title_font_sm",
