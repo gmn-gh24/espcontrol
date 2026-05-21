@@ -20,6 +20,7 @@ struct GridConfig {
   int color_correction_green_percent = COLOR_CORRECTION_GREEN_PERCENT;
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
   const lv_font_t *icon_font;
+  const lv_font_t *alarm_arming_icon_font = nullptr;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
@@ -635,6 +636,7 @@ inline void grid_phase2(
           has_off ? off_val : DEFAULT_OFF_COLOR,
           has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
           cfg.icon_font,
+          cfg.alarm_arming_icon_font,
           cfg.sp_sensor_font,
           cfg.media_title_font,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
@@ -664,6 +666,7 @@ inline void grid_phase2(
           : alarm_action_card->label_font;
         alarm_action_card->pin_label_font = alarm_action_card->key_label_font;
         alarm_action_card->icon_font = cfg.icon_font;
+        alarm_action_card->alarm_arming_icon_font = cfg.alarm_arming_icon_font;
         alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
         alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
         alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;

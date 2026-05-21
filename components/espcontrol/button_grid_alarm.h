@@ -26,6 +26,7 @@ struct AlarmCardCtx {
   const lv_font_t *pin_label_font = nullptr;
   const lv_font_t *key_label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
+  const lv_font_t *alarm_arming_icon_font = nullptr;
   uint32_t on_color = DEFAULT_SLIDER_COLOR;
   uint32_t off_color = DEFAULT_OFF_COLOR;
   uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
@@ -1088,7 +1089,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_style_text_color(ui.arming_icon, lv_color_hex(ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.arming_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (icon_font) lv_obj_set_style_text_font(ui.arming_icon, icon_font, LV_PART_MAIN);
-  lv_obj_set_style_transform_zoom(ui.arming_icon, 768, LV_PART_MAIN);
+  lv_obj_set_width(ui.arming_icon, icon_size);
   apply_width_compensation(ui.arming_icon, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_center(ui.arming_icon);
 
@@ -1140,6 +1141,9 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
   const lv_font_t *icon_font = ctx->icon_font
     ? ctx->icon_font
     : ctx->icon_lbl ? lv_obj_get_style_text_font(ctx->icon_lbl, LV_PART_MAIN) : label_font;
+  const lv_font_t *arming_icon_font = ctx->alarm_arming_icon_font
+    ? ctx->alarm_arming_icon_font
+    : icon_font;
   const lv_font_t *title_font = ctx->key_label_font ? ctx->key_label_font : label_font;
 
   ui.overlay = lv_obj_create(lv_layer_top());
@@ -1207,7 +1211,7 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
     lv_obj_add_event_cb(ui.mode_btn[i], alarm_control_mode_cb, LV_EVENT_CLICKED, &ui.actions[i]);
   }
 
-  alarm_control_create_arming_view(ui, ctx, layout, icon_font, title_font, label_font);
+  alarm_control_create_arming_view(ui, ctx, layout, arming_icon_font, title_font, label_font);
   alarm_control_update_modal(ctx);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
@@ -1240,6 +1244,7 @@ inline AlarmCardCtx *create_alarm_card_context(
     uint32_t off_color,
     uint32_t tertiary_color,
     const lv_font_t *icon_font,
+    const lv_font_t *alarm_arming_icon_font,
     const lv_font_t *value_font,
     const lv_font_t *key_font,
     const lv_font_t *label_font,
@@ -1258,6 +1263,7 @@ inline AlarmCardCtx *create_alarm_card_context(
   ctx->pin_label_font = key_font ? key_font : (label_font ? label_font : value_font);
   ctx->key_label_font = key_font ? key_font : (label_font ? label_font : value_font);
   ctx->icon_font = icon_font;
+  ctx->alarm_arming_icon_font = alarm_arming_icon_font;
   ctx->on_color = on_color;
   ctx->off_color = off_color;
   ctx->tertiary_color = tertiary_color;
