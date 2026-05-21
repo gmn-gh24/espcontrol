@@ -1037,6 +1037,17 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_clear_flag(ui.arming_view, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.arming_view, LV_OBJ_FLAG_HIDDEN);
 
+  bool jc4880p443_layout = control_modal_is_jc4880p443_size(layout);
+  lv_coord_t title_y = layout.panel_h / 12;
+  lv_coord_t countdown_gap = control_modal_scaled_px(58, layout.short_side);
+  lv_coord_t disarm_extra_padding = 0;
+  if (jc4880p443_layout) {
+    title_y -= control_modal_scaled_px(18, layout.short_side);
+    if (title_y < layout.inset) title_y = layout.inset;
+    countdown_gap = control_modal_scaled_px(82, layout.short_side);
+    disarm_extra_padding = control_modal_scaled_px(24, layout.short_side);
+  }
+
   ui.arming_title = lv_label_create(ui.arming_view);
   lv_label_set_text(ui.arming_title, "Arming");
   lv_obj_set_style_text_color(ui.arming_title, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -1045,7 +1056,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_style_transform_zoom(ui.arming_title, 260, LV_PART_MAIN);
   apply_width_compensation(ui.arming_title, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_set_width(ui.arming_title, layout.panel_w - layout.inset * 2);
-  lv_obj_align(ui.arming_title, LV_ALIGN_TOP_MID, 0, layout.panel_h / 12);
+  lv_obj_align(ui.arming_title, LV_ALIGN_TOP_MID, 0, title_y);
 
   ui.arming_countdown = lv_label_create(ui.arming_view);
   lv_label_set_text(ui.arming_countdown, "");
@@ -1054,8 +1065,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   if (label_font) lv_obj_set_style_text_font(ui.arming_countdown, label_font, LV_PART_MAIN);
   apply_width_compensation(ui.arming_countdown, ctx ? ctx->width_compensation_percent : 100);
   lv_obj_set_width(ui.arming_countdown, layout.panel_w - layout.inset * 2);
-  lv_obj_align(ui.arming_countdown, LV_ALIGN_TOP_MID, 0,
-    layout.panel_h / 12 + control_modal_scaled_px(58, layout.short_side));
+  lv_obj_align(ui.arming_countdown, LV_ALIGN_TOP_MID, 0, title_y + countdown_gap);
   lv_obj_add_flag(ui.arming_countdown, LV_OBJ_FLAG_HIDDEN);
 
   lv_coord_t icon_size = layout.short_side * 64 / 100;
@@ -1096,7 +1106,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   if (ui.arming_disarm_label) {
     lv_obj_set_style_text_color(ui.arming_disarm_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_update_layout(ui.arming_disarm_label);
-    lv_coord_t disarm_w = lv_obj_get_width(ui.arming_disarm_label) + disarm_h;
+    lv_coord_t disarm_w = lv_obj_get_width(ui.arming_disarm_label) + disarm_h + disarm_extra_padding;
     lv_coord_t max_disarm_w = layout.panel_w - layout.inset * 2;
     if (disarm_w > max_disarm_w) disarm_w = max_disarm_w;
     lv_obj_set_width(ui.arming_disarm_btn, disarm_w);
