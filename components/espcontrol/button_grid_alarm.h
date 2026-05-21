@@ -158,6 +158,19 @@ inline bool alarm_state_is_active(const std::string &state) {
   return alarm_state_is_armed(state) || state == "arming" || state == "pending";
 }
 
+inline std::string alarm_action_achieved_state(const std::string &mode) {
+  if (mode == "away") return "armed_away";
+  if (mode == "home") return "armed_home";
+  if (mode == "night") return "armed_night";
+  if (mode == "disarm") return "disarmed";
+  return "";
+}
+
+inline bool alarm_action_state_matches(const std::string &mode, const std::string &state) {
+  std::string achieved_state = alarm_action_achieved_state(mode);
+  return !achieved_state.empty() && state == achieved_state;
+}
+
 inline bool alarm_state_releases_label(const std::string &state) {
   return state == "disarmed" || alarm_state_is_armed(state);
 }
@@ -208,6 +221,16 @@ inline void alarm_apply_action_availability(AlarmCardCtx *ctx, const std::string
   apply_control_availability(ctx->btn, ctx->btn, ctx->available);
 }
 
+inline void alarm_apply_action_state(AlarmCardCtx *ctx, const std::string &mode,
+                                     const std::string &state) {
+  alarm_apply_action_availability(ctx, state);
+  if (!ctx || !ctx->btn) return;
+  bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
+  bool active = !unavailable && alarm_action_state_matches(mode, state);
+  if (active) lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
+  else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+}
+
 inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
   ctx->available = true;
@@ -215,6 +238,17 @@ inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
     ctx->entity_id, {},
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
       alarm_apply_action_availability(ctx, string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
+    })
+  );
+}
+
+inline void subscribe_alarm_action_state(AlarmCardCtx *ctx, const std::string &mode) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  ctx->available = true;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, {},
+    std::function<void(esphome::StringRef)>([ctx, mode](esphome::StringRef state) {
+      alarm_apply_action_state(ctx, mode, string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
     })
   );
 }

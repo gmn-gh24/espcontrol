@@ -1133,14 +1133,13 @@ inline void grid_phase2(
           alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
           alarm_action_card->width_compensation_percent = cfg.width_compensation_percent;
           alarm_action_card->grid_cols = COLS;
-          alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
-          subscribe_alarm_action_availability(alarm_action_card);
-
           AlarmActionCtx *action_ctx = new AlarmActionCtx();
           action_ctx->card = alarm_action_card;
           action_ctx->mode = alarm_action_valid(sb_cfg.sensor) ? sb_cfg.sensor : "away";
           action_ctx->requires_pin =
             alarm_action_requires_pin(alarm_action_card->options, action_ctx->mode);
+          alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
+          subscribe_alarm_action_state(alarm_action_card, action_ctx->mode);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             AlarmActionCtx *action = static_cast<AlarmActionCtx *>(lv_event_get_user_data(e));
             alarm_action_activate(action);
