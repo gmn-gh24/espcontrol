@@ -895,12 +895,12 @@ inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, disabled_selector);
   lv_obj_set_style_opa(btn, LV_OPA_COVER, disabled_selector);
   lv_obj_set_style_border_color(btn, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_BORDER), disabled_selector);
+  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_TRACK_BACKGROUND), disabled_selector);
 
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_BORDER), disabled_selector);
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TRACK_BACKGROUND), disabled_selector);
   }
 
   if (enabled) {
