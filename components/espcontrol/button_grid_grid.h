@@ -202,7 +202,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (p.type == "climate") {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
-      s.text_lbl, p, cfg.climate_card_icon_font ? cfg.climate_card_icon_font : cfg.icon_font);
+      s.text_lbl, p, cfg.icon_font);
     return;
   }
   if (brightness_slider_type(p.type) || p.type == "cover") {

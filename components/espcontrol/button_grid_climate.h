@@ -562,7 +562,7 @@ inline std::string climate_card_label(ClimateControlCtx *ctx) {
 
 inline void climate_layout_card_icon(lv_obj_t *icon_lbl) {
   if (!icon_lbl) return;
-  lv_obj_align(icon_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+  lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
 }
 
 inline void climate_layout_card_sensor(lv_obj_t *sensor_container) {
@@ -584,8 +584,8 @@ inline void climate_update_card(ClimateControlCtx *ctx) {
   bool show_icon = ctx->number_display == "icon";
   if (ctx->icon_lbl) {
     if (show_icon) {
-      if (ctx->card_icon_font)
-        lv_obj_set_style_text_font(ctx->icon_lbl, ctx->card_icon_font, LV_PART_MAIN);
+      if (ctx->icon_font)
+        lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
       lv_label_set_text(ctx->icon_lbl,
         climate_temperature_controls_enabled(ctx) ? ctx->icon_on_glyph : ctx->icon_off_glyph);
       climate_layout_card_icon(ctx->icon_lbl);
@@ -1731,11 +1731,11 @@ inline void setup_climate_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                          lv_obj_t *unit_lbl,
                                          lv_obj_t *text_lbl,
                                          const ParsedCfg &p,
-                                         const lv_font_t *card_icon_font) {
+                                         const lv_font_t *icon_font) {
   bool show_icon = normalize_climate_number_display(cfg_option_value(p.options, "number_display")) == "icon";
   if (icon_lbl) {
-    if (show_icon && card_icon_font)
-      lv_obj_set_style_text_font(icon_lbl, card_icon_font, LV_PART_MAIN);
+    if (show_icon && icon_font)
+      lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
     lv_label_set_text(icon_lbl, (p.icon.empty() || p.icon == "Auto") ? find_icon("Thermostat") : find_icon(p.icon.c_str()));
     if (show_icon) {
       climate_layout_card_icon(icon_lbl);
