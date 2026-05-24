@@ -3,6 +3,7 @@
   "state",
   "grid",
   "entity_catalog",
+  "card_contract_generated",
   "api",
   "config_codec",
   "controls",

@@ -51,6 +51,8 @@ constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x333333);
 constexpr int MAX_GRID_SLOTS = 25;
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
 
+#include "button_grid_contract_generated.h"
+
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
   return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
@@ -130,35 +132,23 @@ struct ParsedCfg {
 };
 
 inline bool card_large_numbers_supported(const ParsedCfg &p) {
-  return (p.type == "sensor" && p.precision != "text") ||
-    (p.type == "weather" && (p.precision == "today" || p.precision == "tomorrow")) ||
-    p.type == "calendar" ||
-    p.type == "timezone";
+  return card_contract_large_numbers_supported(p.type, p.precision);
 }
 
 inline bool brightness_slider_type(const std::string &type) {
-  return type == "slider" || type == "light_brightness" || type == "fan_speed";
+  return card_contract_is_brightness_slider_type(type);
 }
 
 inline bool fan_card_type(const std::string &type) {
-  return type == "fan_switch" ||
-         type == "fan_speed" ||
-         type == "fan_oscillate" ||
-         type == "fan_direction" ||
-         type == "fan_preset";
+  return card_contract_is_fan_card_type(type);
 }
 
 inline const char *fan_card_default_icon_name(const std::string &type) {
-  if (type == "fan_switch") return "Fan Off";
-  if (type == "fan_oscillate") return "Fan";
-  if (type == "fan_direction") return "Swap Horizontal";
-  if (type == "fan_preset") return "Fan Auto";
-  return "Fan Speed 2";
+  return card_contract_fan_default_icon_name(type);
 }
 
 inline bool action_card_option_select_action(const std::string &action) {
-  return action == "input_select.select_option" ||
-         action == "select.select_option";
+  return card_contract_is_option_select_action(action);
 }
 
 inline bool action_card_option_select(const ParsedCfg &p) {
@@ -409,7 +399,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "option_select") {
     p.type = "action";
-    p.sensor = "input_select.select_option";
+    p.sensor = CARD_CONTRACT_OPTION_SELECT_ACTION;
     p.unit.clear();
     p.precision.clear();
     p.options.clear();
@@ -417,7 +407,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
   }
   if (action_card_option_select(p)) {
-    p.sensor = "input_select.select_option";
+    p.sensor = CARD_CONTRACT_OPTION_SELECT_ACTION;
     p.unit.clear();
     p.precision.clear();
     p.options.clear();

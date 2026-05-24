@@ -31,6 +31,9 @@ ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
 ENTITY_NAMES_JSON = ROOT / "common" / "config" / "entity_names.json"
 ENTITY_NAMES_YAML = ROOT / "common" / "config" / "entity_names.yaml"
 ENTITY_NAMES_JS = ROOT / "src" / "webserver" / "modules" / "entity_catalog.js"
+CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
+CARD_CONTRACT_JS = ROOT / "src" / "webserver" / "modules" / "card_contract_generated.js"
+CARD_CONTRACT_H = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 
 
 class BuildError(RuntimeError):
@@ -52,6 +55,10 @@ def load_device_manifest_data():
 
 def load_entity_names_data():
     return load_json(ENTITY_NAMES_JSON)
+
+
+def load_card_contract_data():
+    return load_json(CARD_CONTRACT_JSON)
 
 
 def replace_between_markers(text, start_tag, end_tag, new_content):
@@ -201,6 +208,261 @@ def sync_entity_names(check_only=False):
     if check_only:
         if dirty:
             print("Entity name outputs are out of sync. Run 'python scripts/build.py entities' to fix:")
+            for rel in dirty:
+                print(f"  {rel}")
+        return dirty
+
+    for path, content in outputs:
+        if path.exists() and path.read_text() == content:
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        print(f"  updated {path.relative_to(ROOT)}")
+    return dirty
+
+
+# ===========================================================================
+# Card config contract generation
+# ===========================================================================
+
+def validate_card_contract(data):
+    errors = []
+    fields = data.get("fields")
+    expected_fields = ["entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"]
+    if fields != expected_fields:
+        errors.append("fields must match the saved button config field order")
+
+    codes = data.get("subpageTypeCodes")
+    if not isinstance(codes, dict) or not codes:
+        errors.append("subpageTypeCodes must be a non-empty object")
+    else:
+        seen = {}
+        for card_type, code in codes.items():
+            if not isinstance(card_type, str) or not isinstance(code, str) or not code:
+                errors.append("subpageTypeCodes keys and values must be non-empty strings")
+                continue
+            if code in seen:
+                errors.append(f"duplicate subpage type code {code!r}: {seen[code]!r} and {card_type!r}")
+            seen[code] = card_type
+
+    option_select = data.get("optionSelect")
+    if not isinstance(option_select, dict):
+        errors.append("optionSelect must be an object")
+    else:
+        canonical = option_select.get("canonicalAction")
+        actions = option_select.get("actions")
+        if not isinstance(canonical, str) or not canonical:
+            errors.append("optionSelect.canonicalAction must be a non-empty string")
+        if not isinstance(actions, list) or canonical not in actions:
+            errors.append("optionSelect.actions must include optionSelect.canonicalAction")
+
+    groups = data.get("cardGroups")
+    if not isinstance(groups, dict):
+        errors.append("cardGroups must be an object")
+    else:
+        if not isinstance(groups.get("brightnessSlider"), list):
+            errors.append("cardGroups.brightnessSlider must be a list")
+        fan = groups.get("fan")
+        if not isinstance(fan, dict) or not fan:
+            errors.append("cardGroups.fan must be a non-empty object")
+        else:
+            for card_type, config in fan.items():
+                if not isinstance(config, dict) or not isinstance(config.get("defaultIcon"), str):
+                    errors.append(f"cardGroups.fan.{card_type}.defaultIcon must be a string")
+
+    large = data.get("largeNumbers")
+    if not isinstance(large, dict):
+        errors.append("largeNumbers must be an object")
+    return errors
+
+
+def assert_card_contract_valid(data):
+    errors = validate_card_contract(data)
+    if not errors:
+        return
+    print("Card contract is invalid:")
+    for error in errors:
+        print(f"  {error}")
+    raise BuildError("Card contract validation failed.")
+
+
+def js_string_list(values):
+    return "[" + ", ".join(json.dumps(v) for v in values) + "]"
+
+
+def gen_card_contract_js(data):
+    groups = data["cardGroups"]
+    fan = groups["fan"]
+    fan_default_icons = {card_type: cfg["defaultIcon"] for card_type, cfg in fan.items()}
+    fan_default_icon_on = {card_type: cfg["defaultIconOn"] for card_type, cfg in fan.items() if cfg.get("defaultIconOn")}
+    codes = data["subpageTypeCodes"]
+    code_to_type = {code: card_type for card_type, code in codes.items()}
+    large = data["largeNumbers"]
+    return (
+        "// =============================================================================\n"
+        "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n"
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n"
+        "// =============================================================================\n"
+        f"var CARD_CONFIG_FIELDS = {json.dumps(data['fields'])};\n"
+        f"var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = {js_string_list(groups['brightnessSlider'])};\n"
+        f"var CARD_CONTRACT_FAN_DEFAULT_ICONS = {json.dumps(fan_default_icons, indent=2)};\n"
+        f"var CARD_CONTRACT_FAN_DEFAULT_ICON_ON = {json.dumps(fan_default_icon_on, indent=2)};\n"
+        f"var CARD_CONTRACT_OPTION_SELECT_ACTION = {json.dumps(data['optionSelect']['canonicalAction'])};\n"
+        f"var CARD_CONTRACT_OPTION_SELECT_ACTIONS = {js_string_list(data['optionSelect']['actions'])};\n"
+        f"var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {json.dumps(codes, indent=2)};\n"
+        f"var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {json.dumps(code_to_type, indent=2)};\n"
+        f"var CARD_CONTRACT_LARGE_NUMBERS = {json.dumps(large, indent=2)};\n"
+        "\n"
+        "function cardContractListContains(list, value) {\n"
+        "  return (list || []).indexOf(value) >= 0;\n"
+        "}\n"
+        "\n"
+        "function cardContractIsBrightnessSliderType(type) {\n"
+        "  return cardContractListContains(CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES, type);\n"
+        "}\n"
+        "\n"
+        "function cardContractIsFanCardType(type) {\n"
+        "  return Object.prototype.hasOwnProperty.call(CARD_CONTRACT_FAN_DEFAULT_ICONS, type || \"\");\n"
+        "}\n"
+        "\n"
+        "function cardContractFanDefaultIcon(type) {\n"
+        "  return CARD_CONTRACT_FAN_DEFAULT_ICONS[type] || CARD_CONTRACT_FAN_DEFAULT_ICONS.fan_speed || \"Fan Speed 2\";\n"
+        "}\n"
+        "\n"
+        "function cardContractFanDefaultIconOn(type) {\n"
+        "  return CARD_CONTRACT_FAN_DEFAULT_ICON_ON[type] || \"Auto\";\n"
+        "}\n"
+        "\n"
+        "function cardContractIsOptionSelectType(type) {\n"
+        "  return type === \"option_select\";\n"
+        "}\n"
+        "\n"
+        "function cardContractIsOptionSelectAction(action) {\n"
+        "  return cardContractListContains(CARD_CONTRACT_OPTION_SELECT_ACTIONS, action);\n"
+        "}\n"
+        "\n"
+        "function cardContractSubpageTypeCode(type) {\n"
+        "  return CARD_CONTRACT_SUBPAGE_TYPE_CODES[type || \"\"] || (type || \"\");\n"
+        "}\n"
+        "\n"
+        "function cardContractSubpageTypeFromCode(code) {\n"
+        "  return CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE[code || \"\"] || (code || \"\");\n"
+        "}\n"
+        "\n"
+        "function cardContractLargeNumbersSupported(type, precision) {\n"
+        "  var rule = CARD_CONTRACT_LARGE_NUMBERS[type || \"\"];\n"
+        "  if (rule === true) return true;\n"
+        "  if (!rule) return false;\n"
+        "  if (rule.excludedPrecisions) return !cardContractListContains(rule.excludedPrecisions, precision || \"\");\n"
+        "  if (rule.precisions) return cardContractListContains(rule.precisions, precision || \"\");\n"
+        "  return false;\n"
+        "}\n"
+    )
+
+
+def cpp_string_array(name, values):
+    quoted = ", ".join(json.dumps(v) for v in values)
+    return f"inline const char *const {name}[] = {{{quoted}}};\n"
+
+
+def gen_card_contract_h(data):
+    groups = data["cardGroups"]
+    fan = groups["fan"]
+    codes = data["subpageTypeCodes"]
+    option_actions = data["optionSelect"]["actions"]
+    lines = [
+        "#pragma once\n",
+        "\n",
+        "// =============================================================================\n",
+        "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        "\n",
+        f'constexpr const char *CARD_CONTRACT_OPTION_SELECT_ACTION = {json.dumps(data["optionSelect"]["canonicalAction"])};\n',
+        cpp_string_array("CARD_CONTRACT_OPTION_SELECT_ACTIONS", option_actions),
+        cpp_string_array("CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES", groups["brightnessSlider"]),
+        "\n",
+        "inline bool card_contract_string_in(const std::string &value, const char *const *items, size_t count) {\n",
+        "  for (size_t i = 0; i < count; i++) {\n",
+        "    if (value == items[i]) return true;\n",
+        "  }\n",
+        "  return false;\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_is_brightness_slider_type(const std::string &type) {\n",
+        "  return card_contract_string_in(type, CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES,\n",
+        "    sizeof(CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES) / sizeof(CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_is_option_select_action(const std::string &action) {\n",
+        "  return card_contract_string_in(action, CARD_CONTRACT_OPTION_SELECT_ACTIONS,\n",
+        "    sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS) / sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_is_fan_card_type(const std::string &type) {\n",
+    ]
+    fan_conditions = " ||\n         ".join(f'type == "{card_type}"' for card_type in fan.keys())
+    lines.append(f"  return {fan_conditions};\n")
+    lines.extend([
+        "}\n",
+        "\n",
+        "inline const char *card_contract_fan_default_icon_name(const std::string &type) {\n",
+    ])
+    for card_type, config in fan.items():
+        lines.append(f'  if (type == "{card_type}") return {json.dumps(config["defaultIcon"])};\n')
+    lines.extend([
+        "  return \"Fan Speed 2\";\n",
+        "}\n",
+        "\n",
+        "inline const char *card_contract_fan_default_icon_on_name(const std::string &type) {\n",
+    ])
+    for card_type, config in fan.items():
+        if config.get("defaultIconOn"):
+            lines.append(f'  if (type == "{card_type}") return {json.dumps(config["defaultIconOn"])};\n')
+    lines.extend([
+        "  return \"Auto\";\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_large_numbers_supported(const std::string &type, const std::string &precision) {\n",
+        "  if (type == \"sensor\") return precision != \"text\";\n",
+        "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
+        "  return type == \"calendar\" || type == \"timezone\";\n",
+        "}\n",
+        "\n",
+        "inline const char *card_contract_subpage_type_code(const std::string &type) {\n",
+    ])
+    for card_type, code in codes.items():
+        lines.append(f'  if (type == "{card_type}") return "{code}";\n')
+    lines.extend([
+        "  return type.c_str();\n",
+        "}\n",
+        "\n",
+        "inline std::string card_contract_subpage_type_from_code(const std::string &code) {\n",
+    ])
+    for card_type, code in codes.items():
+        lines.append(f'  if (code == "{code}") return "{card_type}";\n')
+    lines.extend([
+        "  return code;\n",
+        "}\n",
+    ])
+    return "".join(lines)
+
+
+def sync_card_contract(check_only=False):
+    data = load_card_contract_data()
+    assert_card_contract_valid(data)
+    outputs = [
+        (CARD_CONTRACT_JS, gen_card_contract_js(data)),
+        (CARD_CONTRACT_H, gen_card_contract_h(data)),
+    ]
+    dirty = []
+    for path, content in outputs:
+        if not path.exists() or path.read_text() != content:
+            dirty.append(path.relative_to(ROOT))
+
+    if check_only:
+        if dirty:
+            print("Card contract outputs are out of sync. Run 'python scripts/build.py contract' to fix:")
             for rel in dirty:
                 print(f"  {rel}")
         return dirty
@@ -646,14 +908,15 @@ def main():
         for cmd in commands:
             if cmd == "all":
                 entity_dirty = sync_entity_names(check_only=check_only)
+                contract_dirty = sync_card_contract(check_only=check_only)
                 icon_dirty = sync_icons(check_only=check_only)
                 www_dirty = build_www(check_only=check_only)
-                if check_only and (entity_dirty or icon_dirty or www_dirty):
+                if check_only and (entity_dirty or contract_dirty or icon_dirty or www_dirty):
                     exit_code = 1
-                elif not entity_dirty and not icon_dirty and not www_dirty:
+                elif not entity_dirty and not contract_dirty and not icon_dirty and not www_dirty:
                     print("All outputs are up to date.")
                 else:
-                    total = len(entity_dirty) + len(icon_dirty) + len(www_dirty)
+                    total = len(entity_dirty) + len(contract_dirty) + len(icon_dirty) + len(www_dirty)
                     print(f"Updated {total} target(s).")
             elif cmd == "entities":
                 dirty = sync_entity_names(check_only=check_only)
@@ -671,6 +934,14 @@ def main():
                     print("Icon data is in sync.")
                 else:
                     print(f"Synced {len(dirty)} section(s).")
+            elif cmd == "contract":
+                dirty = sync_card_contract(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("Card contract outputs are in sync.")
+                else:
+                    print(f"Synced {len(dirty)} card contract output(s).")
             elif cmd == "www":
                 dirty = build_www(check_only=check_only)
                 if check_only and dirty:
@@ -681,7 +952,7 @@ def main():
                     print(f"Built {len(dirty)} file(s).")
             else:
                 print(f"Unknown command: {cmd}")
-                print("Usage: python scripts/build.py [all|entities|icons|www] [--check]")
+                print("Usage: python scripts/build.py [all|entities|contract|icons|www] [--check]")
                 exit_code = 1
     except BuildError as exc:
         print(exc)

@@ -2,6 +2,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   globalThis.__ESPCONTROL_TEST_HOOKS__.config = {
     parseButtonConfig: parseButtonConfig,
     serializeButtonConfig: serializeButtonConfig,
+    CARD_CONFIG_FIELDS: CARD_CONFIG_FIELDS,
+    cardContractSubpageTypeCode: cardContractSubpageTypeCode,
+    cardContractSubpageTypeFromCode: cardContractSubpageTypeFromCode,
+    cardContractLargeNumbersSupported: cardContractLargeNumbersSupported,
     BACKUP_CONFIG_VERSION: BACKUP_CONFIG_VERSION,
     BACKUP_FORMAT: BACKUP_FORMAT,
     createBackupConfig: createBackupConfig,

@@ -1,0 +1,89 @@
+{
+  "fields": [
+    "entity",
+    "label",
+    "icon",
+    "icon_on",
+    "sensor",
+    "unit",
+    "type",
+    "precision",
+    "options"
+  ],
+  "optionSelect": {
+    "canonicalAction": "input_select.select_option",
+    "actions": [
+      "input_select.select_option",
+      "select.select_option"
+    ]
+  },
+  "cardGroups": {
+    "brightnessSlider": [
+      "slider",
+      "light_brightness",
+      "fan_speed"
+    ],
+    "fan": {
+      "fan_switch": {
+        "defaultIcon": "Fan Off",
+        "defaultIconOn": "Fan"
+      },
+      "fan_speed": {
+        "defaultIcon": "Fan Speed 2"
+      },
+      "fan_oscillate": {
+        "defaultIcon": "Fan"
+      },
+      "fan_direction": {
+        "defaultIcon": "Swap Horizontal"
+      },
+      "fan_preset": {
+        "defaultIcon": "Fan Auto"
+      }
+    }
+  },
+  "largeNumbers": {
+    "sensor": {
+      "excludedPrecisions": [
+        "text"
+      ]
+    },
+    "weather": {
+      "precisions": [
+        "today",
+        "tomorrow"
+      ]
+    },
+    "calendar": true,
+    "timezone": true
+  },
+  "subpageTypeCodes": {
+    "action": "A",
+    "calendar": "D",
+    "timezone": "T",
+    "sensor": "S",
+    "door_window": "X",
+    "weather": "W",
+    "weather_forecast": "F",
+    "option_select": "U",
+    "fan_switch": "B",
+    "fan_speed": "J",
+    "fan_oscillate": "O",
+    "fan_direction": "E",
+    "fan_preset": "Z",
+    "light_brightness": "V",
+    "light_switch": "Q",
+    "alarm": "Y",
+    "alarm_action": "AA",
+    "slider": "L",
+    "cover": "C",
+    "light_temperature": "N",
+    "garage": "R",
+    "lock": "K",
+    "media": "M",
+    "climate": "H",
+    "push": "P",
+    "internal": "I",
+    "subpage": "G"
+  }
+}

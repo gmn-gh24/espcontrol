@@ -195,6 +195,21 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 assert(hooks, "web config helpers were not exported");
+assert.deepStrictEqual(Array.from(hooks.CARD_CONFIG_FIELDS), [
+  "entity",
+  "label",
+  "icon",
+  "icon_on",
+  "sensor",
+  "unit",
+  "type",
+  "precision",
+  "options",
+], "generated card contract preserves saved field order");
+assert.strictEqual(hooks.cardContractSubpageTypeCode("climate"), "H", "generated contract exposes compact type codes");
+assert.strictEqual(hooks.cardContractSubpageTypeFromCode("H"), "climate", "generated contract exposes compact type decode");
+assert.strictEqual(hooks.cardContractLargeNumbersSupported("sensor", "text"), false, "generated contract blocks text sensor large numbers");
+assert.strictEqual(hooks.cardContractLargeNumbersSupported("weather", "tomorrow"), true, "generated contract allows weather forecast large numbers");
 assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "", "empty preview label suppresses fallback");
 assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback", "missing preview label uses fallback");
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "°F", "fahrenheit unit normalization");

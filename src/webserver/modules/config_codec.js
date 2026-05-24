@@ -131,27 +131,19 @@ function normalizeButtonConfig(b) {
 }
 
 function isBrightnessSliderType(type) {
-  return type === "slider" || type === "light_brightness" || type === "fan_speed";
+  return cardContractIsBrightnessSliderType(type);
 }
 
 function isFanCardType(type) {
-  return type === "fan_switch" ||
-    type === "fan_speed" ||
-    type === "fan_oscillate" ||
-    type === "fan_direction" ||
-    type === "fan_preset";
+  return cardContractIsFanCardType(type);
 }
 
 function isOptionSelectType(type) {
-  return type === "option_select";
+  return cardContractIsOptionSelectType(type);
 }
 
 function fanCardDefaultIcon(type) {
-  if (type === "fan_switch") return "Fan Off";
-  if (type === "fan_oscillate") return "Fan";
-  if (type === "fan_direction") return "Swap Horizontal";
-  if (type === "fan_preset") return "Fan Auto";
-  return "Fan Speed 2";
+  return cardContractFanDefaultIcon(type);
 }
 
 var SENSOR_LARGE_NUMBERS_OPTION = "large_numbers";
@@ -252,10 +244,7 @@ function cardLargeNumbersSupported(b) {
       return typeof large.supported === "function" ? !!large.supported(b) : large.supported !== false;
     }
   }
-  return (b.type === "sensor" && b.precision !== "text") ||
-    (b.type === "weather" && (b.precision === "today" || b.precision === "tomorrow")) ||
-    b.type === "calendar" ||
-    b.type === "timezone";
+  return cardContractLargeNumbersSupported(b.type, b.precision);
 }
 
 function cardLargeNumbersEnabled(b) {
@@ -909,69 +898,11 @@ function parseSubpageConfig(str, raw) {
 }
 
 function subpageTypeCode(type) {
-  var map = {
-    action: "A",
-    calendar: "D",
-    timezone: "T",
-    sensor: "S",
-    door_window: "X",
-    weather: "W",
-    weather_forecast: "F",
-    option_select: "U",
-    fan_switch: "B",
-    fan_speed: "J",
-    fan_oscillate: "O",
-    fan_direction: "E",
-    fan_preset: "Z",
-    light_brightness: "V",
-    light_switch: "Q",
-    alarm: "Y",
-    alarm_action: "AA",
-    slider: "L",
-    cover: "C",
-    light_temperature: "N",
-    garage: "R",
-    lock: "K",
-    media: "M",
-    climate: "H",
-    push: "P",
-    internal: "I",
-    subpage: "G",
-  };
-  return map[type || ""] || (type || "");
+  return cardContractSubpageTypeCode(type);
 }
 
 function subpageTypeFromCode(code) {
-  var map = {
-    A: "action",
-    D: "calendar",
-    T: "timezone",
-    S: "sensor",
-    X: "door_window",
-    W: "weather",
-    F: "weather_forecast",
-    U: "option_select",
-    B: "fan_switch",
-    J: "fan_speed",
-    O: "fan_oscillate",
-    E: "fan_direction",
-    Z: "fan_preset",
-    V: "light_brightness",
-    Q: "light_switch",
-    Y: "alarm",
-    AA: "alarm_action",
-    L: "slider",
-    C: "cover",
-    N: "light_temperature",
-    R: "garage",
-    K: "lock",
-    M: "media",
-    H: "climate",
-    P: "push",
-    I: "internal",
-    G: "subpage",
-  };
-  return map[code || ""] || (code || "");
+  return cardContractSubpageTypeFromCode(code);
 }
 
 function encodeSubpageField(value) {
