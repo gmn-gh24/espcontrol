@@ -116,7 +116,7 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install chromium
 
-      - run: npm run check:all
+      - run: npm run check:ci
 
   docs:
     name: Build Docs

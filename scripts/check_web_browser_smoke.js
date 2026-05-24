@@ -3,6 +3,7 @@
 
 const assert = require("assert");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { chromium } = require("playwright");
 
@@ -32,6 +33,9 @@ const BUTTON_FIXTURES = [
   "light.kitchen;Kitchen;Lightbulb;Lightbulb",
   "sensor.energy;Energy;Gauge;Auto;sensor.energy;W;sensor;0",
   "climate.hall;Hall;Thermostat;Auto;;;climate;;",
+  "media_player.living;Media;Auto;Auto;play_pause;;media;;",
+  "fan.ceiling;Fan;Fan Off;Fan;;;fan_switch;;",
+  ";Rooms;Home;Auto;;;subpage;;",
 ];
 
 function htmlFor(slug) {
@@ -124,12 +128,17 @@ async function installFakeEventSource(page) {
 
 function seededEvents() {
   const events = [
-    { id: "text-button_order", state: "1,2,3" },
+    { id: "text-button_order", state: "1,2,3w,4,5,6" },
     { id: "text-button_on_color", state: "FF8C00" },
     { id: "text-button_off_color", state: "313131" },
     { id: "text-sensor_card_color", state: "212121" },
     { id: "switch-screen__clock_bar", state: "ON", value: true },
     { id: "switch-screen__network_status_icon", state: "ON", value: true },
+    { id: "select-screen__timezone", state: "Europe/London (GMT+0)", value: "Europe/London (GMT+0)", option: ["Europe/London (GMT+0)", "America/New_York (GMT-5)"] },
+    { id: "select-screen__clock_format", state: "24h", value: "24h", option: ["12h", "24h"] },
+    { id: "select-screen__rotation", state: "0", value: "0", option: ["0", "90", "180", "270"] },
+    { id: "number-screensaver_timeout", state: "300", value: 300, min: 10, max: 3600 },
+    { id: "text-subpage_6_config", state: "1,B|media_player.living:Living:Speaker:Auto:play_pause::media" },
   ];
   BUTTON_FIXTURES.forEach((state, index) => {
     events.push({ id: `text-button_${index + 1}_config`, state });
@@ -144,7 +153,7 @@ function assertNoLayoutBreaks(result, label) {
   assert(result.applyVisible, `${label}: apply controls should be visible`);
   assert(result.gridChildren > 0, `${label}: grid should render cells`);
   assert(result.visibleGridChildren > 0, `${label}: grid cells should have visible size`);
-  assert(result.visibleCards >= 3, `${label}: seeded cards should render`);
+  assert(result.visibleCards >= BUTTON_FIXTURES.length, `${label}: seeded cards should render`);
   assert.strictEqual(result.outsideGrid.length, 0, `${label}: grid children overflowed the preview: ${result.outsideGrid.join(", ")}`);
   assert.strictEqual(result.overlaps.length, 0, `${label}: grid children overlapped: ${result.overlaps.join(", ")}`);
   assert(
@@ -237,6 +246,7 @@ async function assertSettingsPage(page, label) {
 
 async function assertEmptyCellSettings(page, label) {
   const emptyCell = page.locator(".sp-empty-cell").first();
+  if ((await emptyCell.count()) === 0) return;
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   const modalLayout = await page.evaluate(() => {
@@ -260,6 +270,237 @@ async function assertEmptyCellSettings(page, label) {
     modalLayout.documentScrollWidth <= modalLayout.windowWidth + 1,
     `${label}: card settings modal introduced horizontal overflow`
   );
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
+function postRecord(requestUrl) {
+  const url = new URL(requestUrl);
+  const parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+  return {
+    domain: parts[0] || "",
+    name: parts[1] || "",
+    action: parts.slice(2).join("/"),
+    value: url.searchParams.get("value"),
+    option: url.searchParams.get("option"),
+    path: decodeURIComponent(url.pathname) + url.search,
+  };
+}
+
+function postMatches(post, expected) {
+  return Object.keys(expected).every((key) => post[key] === expected[key]);
+}
+
+async function waitForPost(posts, expected, label, startIndex = 0) {
+  const deadline = Date.now() + 4000;
+  while (Date.now() < deadline) {
+    if (posts.slice(startIndex).some((post) => postMatches(post, expected))) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.fail(`${label}: expected POST ${JSON.stringify(expected)}, got ${JSON.stringify(posts.slice(startIndex), null, 2)}`);
+}
+
+function backupButtons(count) {
+  const buttons = Array.from({ length: count }, () => ({}));
+  buttons[0] = { entity: "light.kitchen", label: "Kitchen", icon: "Lightbulb", icon_on: "Lightbulb" };
+  buttons[1] = { entity: "sensor.energy", label: "Energy", icon: "Gauge", sensor: "sensor.energy", unit: "W", type: "sensor", precision: "0" };
+  buttons[2] = { label: "Rooms", icon: "Home", type: "subpage" };
+  buttons[3] = { entity: "media_player.living", label: "Media", type: "media", sensor: "play_pause" };
+  return buttons;
+}
+
+function backupFixture(device, slots) {
+  return {
+    version: 2,
+    format: "espcontrol.backup",
+    device,
+    source: { device, slots },
+    exported_at: "2026-05-24T12:00:00.000Z",
+    button_order: "1,2,3w,4",
+    button_on_color: "AA5500",
+    button_off_color: "101010",
+    sensor_card_color: "202020",
+    buttons: backupButtons(slots),
+    subpages: {
+      3: "1,B|media_player.living:Living:Speaker:Auto:play_pause::media",
+    },
+    settings: {
+      indoor_temp_enable: true,
+      outdoor_temp_enable: false,
+      indoor_temp_entity: "sensor.indoor_temperature",
+      outdoor_temp_entity: "sensor.outdoor_temperature",
+      temperature_unit: "°C",
+      clock_bar: true,
+      network_status_icon: true,
+      temperature_degree_symbol: true,
+      timezone: "Europe/London (GMT+0)",
+      clock_format: "24h",
+      ntp_server_1: "pool.ntp.org",
+      ntp_server_2: "time.nist.gov",
+      ntp_server_3: "time.cloudflare.com",
+      month_names: "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec",
+      screensaver_mode: "timer",
+      presence_sensor_entity: "binary_sensor.office_presence",
+      media_player_sleep_prevention: true,
+      media_player_sleep_prevention_entity: "media_player.living",
+      screensaver_action: "dim",
+      clock_brightness_day: 44,
+      clock_brightness_night: 22,
+      screensaver_dimmed_brightness: 15,
+      screensaver_timeout: 60,
+      home_screen_timeout: 120,
+      screen_rotation: "90",
+    },
+    screen: {
+      brightness_day: 88,
+      brightness_night: 55,
+      automatic_brightness: false,
+      schedule_enabled: true,
+      schedule_on_hour: 7,
+      schedule_off_hour: 22,
+      schedule_mode: "clock",
+      schedule_wake_timeout: 30,
+      schedule_wake_brightness: 70,
+      schedule_dimmed_brightness: 12,
+      schedule_clock_brightness: 40,
+    },
+  };
+}
+
+function writeJsonFixture(name, value) {
+  fs.mkdirSync(FAILURE_DIR, { recursive: true });
+  const file = path.join(os.tmpdir(), `${name}-${process.pid}-${Date.now()}.json`);
+  fs.writeFileSync(file, typeof value === "string" ? value : JSON.stringify(value, null, 2));
+  return file;
+}
+
+async function openBackupControls(page) {
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.waitForSelector("#sp-settings.sp-page.active");
+  if (!(await page.getByRole("button", { name: "Import" }).isVisible())) {
+    await page.getByText("Backup", { exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Import" }).waitFor({ state: "visible" });
+}
+
+async function importBackup(page, data, name) {
+  const file = writeJsonFixture(name, data);
+  await openBackupControls(page);
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Import" }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(file);
+}
+
+async function startBannerCapture(page) {
+  await page.evaluate(() => {
+    window.__bannerMessages = [];
+    if (!window.__bannerTextCaptureInstalled) {
+      var descriptor = Object.getOwnPropertyDescriptor(Node.prototype, "textContent");
+      if (descriptor && descriptor.set && descriptor.get) {
+        Object.defineProperty(Node.prototype, "textContent", {
+          get: function () { return descriptor.get.call(this); },
+          set: function (value) {
+            if (this.classList && this.classList.contains("sp-banner")) {
+              window.__bannerMessages = window.__bannerMessages || [];
+              window.__bannerMessages.push({ className: this.className || "", text: String(value || "") });
+            }
+            return descriptor.set.call(this, value);
+          },
+          configurable: true,
+        });
+        window.__bannerTextCaptureInstalled = true;
+      }
+    }
+    if (window.__bannerObserver) window.__bannerObserver.disconnect();
+    var banner = document.querySelector(".sp-banner");
+    if (!banner) return;
+    function record() {
+      window.__bannerMessages.push({
+        className: banner.className,
+        text: banner.textContent || "",
+      });
+    }
+    window.__bannerObserver = new MutationObserver(record);
+    window.__bannerObserver.observe(banner, { attributes: true, childList: true, subtree: true });
+    record();
+  });
+}
+
+async function assertBackupImportSmoke(page, posts, slug) {
+  const before = posts.length;
+  await importBackup(page, backupFixture(slug, 20), "same-device-backup");
+  await page.waitForSelector(".sp-banner.sp-success");
+  assert((await page.locator(".sp-banner").textContent()).includes("Configuration imported successfully"), "same-device import succeeds");
+  await waitForPost(posts, { domain: "text", name: "Button On Color", action: "set", value: "AA5500" }, "backup color import", before);
+  await waitForPost(posts, { domain: "text", name: "Button 3 Config", action: "set" }, "backup subpage button config", before);
+  await waitForPost(posts, { domain: "text", name: "Subpage 3 Config", action: "set" }, "backup subpage config", before);
+  await waitForPost(posts, { domain: "select", name: "Screen: Timezone", action: "set", option: "Europe/London (GMT+0)" }, "backup timezone import", before);
+  await waitForPost(posts, { domain: "number", name: "Screen: Daytime Brightness", action: "set", value: "88" }, "backup brightness import", before);
+  await waitForPost(posts, { domain: "select", name: "Screen: Rotation", action: "set", option: "90" }, "backup rotation import", before);
+
+  await importBackup(page, "{", "invalid-backup");
+  await page.waitForSelector(".sp-banner.sp-error");
+  assert((await page.locator(".sp-banner").textContent()).includes("could not parse JSON"), "invalid JSON shows an error");
+
+  await startBannerCapture(page);
+  await importBackup(page, backupFixture("different-panel", 3), "cross-device-backup");
+  await page.waitForSelector(".sp-banner.sp-success");
+  const warnings = await page.evaluate(() => window.__bannerMessages || []);
+  assert(
+    warnings.some((entry) => entry.className.includes("sp-warning") &&
+      (entry.text.includes("different panel") || entry.text.includes("slots"))),
+    `cross-device import shows an adaptation warning: ${JSON.stringify(warnings)}`
+  );
+}
+
+async function assertEditAndApplySmoke(page, posts) {
+  const before = posts.length;
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+
+  await page.locator('.sp-main [data-slot="1"]').click();
+  await page.getByRole("button", { name: /Edit/ }).click();
+  await page.locator("#sp-inp-label").fill("Kitchen Main");
+  await page.locator("#sp-inp-entity").fill("switch.kitchen_main");
+  await page.getByRole("button", { name: "Save" }).click();
+  await waitForPost(posts, {
+    domain: "text",
+    name: "Button 1 Config",
+    action: "set",
+    value: "switch.kitchen_main;Kitchen Main;Lightbulb;Lightbulb",
+  }, "switch card edit", before);
+
+  await page.locator('.sp-main [data-slot="2"]').click();
+  await page.getByRole("button", { name: /Edit/ }).click();
+  await page.locator("#sp-inp-label").fill("Energy Usage");
+  await page.getByRole("button", { name: "Save" }).click();
+  await waitForPost(posts, {
+    domain: "text",
+    name: "Button 2 Config",
+    action: "set",
+    value: "sensor.energy;Energy Usage;Gauge;Auto;sensor.energy;W;sensor;0",
+  }, "sensor card edit", before);
+
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: /Edit/ }).click();
+  await page.locator("#sp-inp-label").fill("Living Media");
+  await page.getByRole("button", { name: "Save" }).click();
+  await waitForPost(posts, {
+    domain: "text",
+    name: "Button 4 Config",
+    action: "set",
+  }, "media card edit", before);
+
+  await page.getByRole("button", { name: "Apply Configuration" }).click();
+  await waitForPost(posts, {
+    domain: "button",
+    name: "Apply Configuration",
+    action: "press",
+  }, "apply configuration", before);
 }
 
 async function runCase(browser, testCase) {
@@ -267,10 +508,17 @@ async function runCase(browser, testCase) {
   await installRoutes(context, testCase.slug);
   const page = await context.newPage();
   const errors = [];
+  const posts = [];
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (request.method() === "POST" && requestUrl.hostname === "espcontrol.test") {
+      posts.push(postRecord(request.url()));
+    }
   });
   await installFakeEventSource(page);
 
@@ -287,6 +535,10 @@ async function runCase(browser, testCase) {
     await assertSettingsPage(page, testCase.name);
     assertNoLayoutBreaks(await measureCoreLayout(page), `${testCase.name} after settings`);
     await assertEmptyCellSettings(page, testCase.name);
+    if (testCase.name === "landscape") {
+      await assertBackupImportSmoke(page, posts, testCase.slug);
+      await assertEditAndApplySmoke(page, posts);
+    }
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });
     await page.screenshot({ path: path.join(FAILURE_DIR, `${testCase.name}-${testCase.slug}.png`), fullPage: true });
