@@ -16,8 +16,19 @@ const WEB_MODULE_ORDER = [
   "api",
   "config_codec",
   "controls",
+  "controls_shell",
+  "settings_page",
+  "controls_fields",
+  "preview_render",
+  "button_settings",
+  "preview_interactions",
   "backup_contract",
+  "app_backup",
+  "app_status_preview",
+  "app_events",
   "app",
+  "app_test_hooks",
+  "app_start",
 ];
 
 function indentChunk(text) {

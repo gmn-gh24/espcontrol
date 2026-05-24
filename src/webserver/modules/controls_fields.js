@@ -1,0 +1,239 @@
+// ── Settings helpers ───────────────────────────────────────────────────
+
+function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement) {
+  var card = document.createElement("div");
+  card.className = "card";
+  var header = document.createElement("div");
+  header.className = "card-header";
+  var h3 = document.createElement("h3");
+  h3.textContent = title;
+  var rightWrap = document.createElement("div");
+  rightWrap.className = "card-header-right";
+  var chevron = document.createElement("span");
+  chevron.className = "card-chevron";
+  chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  if (badgeElement) rightWrap.appendChild(badgeElement);
+  rightWrap.appendChild(chevron);
+  header.appendChild(h3);
+  header.appendChild(rightWrap);
+  var body = document.createElement("div");
+  body.className = "card-body";
+  body.appendChild(bodyElement);
+  card.appendChild(header);
+  card.appendChild(body);
+  if (defaultCollapsed) card.classList.add("collapsed");
+  header.onclick = function () { card.classList.toggle("collapsed"); };
+  return card;
+}
+
+function fieldLabel(text, forId) {
+  var el = document.createElement("label");
+  el.className = "sp-field-label";
+  el.textContent = text;
+  if (forId) el.htmlFor = forId;
+  return el;
+}
+
+function textInput(id, value, placeholder) {
+  var el = document.createElement("input");
+  el.type = "text";
+  el.className = "sp-input";
+  if (id) el.id = id;
+  el.value = value;
+  el.placeholder = placeholder || "";
+  return el;
+}
+
+function colorField(id, value, onChange) {
+  var row = document.createElement("div");
+  row.className = "sp-color-row";
+
+  var swatch = document.createElement("div");
+  swatch.className = "sp-color-swatch";
+  swatch.style.backgroundColor = "#" + (value.length === 6 ? value : "000000");
+
+  var picker = document.createElement("input");
+  picker.type = "color";
+  picker.value = "#" + (value.length === 6 ? value : "000000");
+  swatch.appendChild(picker);
+  row.appendChild(swatch);
+
+  var inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "sp-input";
+  inp.id = id;
+  inp.value = value;
+  inp.placeholder = "6-digit hex e.g. FF8C00";
+  row.appendChild(inp);
+
+  picker.addEventListener("input", function () {
+    var hex = this.value.replace("#", "").toUpperCase();
+    inp.value = hex;
+    swatch.style.backgroundColor = "#" + hex;
+    onChange(hex);
+  });
+
+  inp.addEventListener("blur", function () {
+    var hex = this.value.replace(/^#/, "").toUpperCase();
+    if (/^[0-9A-F]{6}$/i.test(hex)) {
+      swatch.style.backgroundColor = "#" + hex;
+      picker.value = "#" + hex;
+    }
+    onChange(hex);
+  });
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") this.blur(); });
+
+  row._syncColor = function (hex) {
+    if (document.activeElement !== inp) inp.value = hex;
+    swatch.style.backgroundColor = "#" + (hex.length === 6 ? hex : "000000");
+    picker.value = "#" + (hex.length === 6 ? hex : "000000");
+  };
+
+  return row;
+}
+
+function toggleRow(label, id, checked) {
+  var row = document.createElement("div");
+  row.className = "sp-toggle-row";
+  var lbl = document.createElement("span");
+  lbl.className = "sp-toggle-label";
+  lbl.textContent = label;
+  row.appendChild(lbl);
+  var toggle = document.createElement("label");
+  toggle.className = "sp-toggle";
+  var inp = document.createElement("input");
+  inp.type = "checkbox";
+  inp.id = id;
+  inp.checked = !!checked;
+  var track = document.createElement("span");
+  track.className = "sp-toggle-track";
+  toggle.appendChild(inp);
+  toggle.appendChild(track);
+  row.appendChild(toggle);
+  return { row: row, input: inp };
+}
+
+function cardMetadataValue(value, b, helpers) {
+  return typeof value === "function" ? value(b, helpers) : value;
+}
+
+function applyCardMetadataFields(b, helpers, fields) {
+  fields = fields || {};
+  for (var key in fields) {
+    var value = cardMetadataValue(fields[key], b, helpers);
+    b[key] = value;
+    helpers.saveField(key, value);
+  }
+}
+
+function renderCardModeSelector(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var mode = metadata.mode || {};
+  var field = helpers.selectField(
+    mode.label || "Type",
+    helpers.idPrefix + (mode.idSuffix || "mode"),
+    mode.options || [],
+    cardMetadataValue(mode.value, b, helpers) || "",
+    function () {
+      if (mode.onChange) mode.onChange.call(this, b, helpers);
+    }
+  );
+  panel.appendChild(field.field);
+  return field;
+}
+
+function renderCardLargeNumbersToggle(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var large = metadata.largeNumbers || {};
+  if (helpers.cardSize !== 4) return null;
+  if (large.isVisible && !large.isVisible(b, helpers)) return null;
+  var toggle = helpers.toggleRow(
+    large.label || "Large Numbers",
+    helpers.idPrefix + (large.idSuffix || "large-numbers"),
+    cardLargeNumbersEnabled(b)
+  );
+  panel.appendChild(toggle.row);
+  toggle.input.addEventListener("change", function () {
+    setSensorLargeNumbersEnabled(b, this.checked);
+    helpers.saveField("options", b.options);
+    if (large.onChange) large.onChange.call(this, b, helpers);
+  });
+  return toggle;
+}
+
+function syncCardLargeNumbersToggle(toggle, b, helpers, visible) {
+  if (!toggle) return;
+  toggle.row.style.display = visible ? "" : "none";
+  if (!visible && cardLargeNumbersEnabled(b)) {
+    setSensorLargeNumbersEnabled(b, false);
+    toggle.input.checked = false;
+    helpers.saveField("options", b.options);
+  }
+}
+
+function renderCardEntityField(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var entity = metadata.entity || {};
+  var bindName = entity.bindName || "entity";
+  var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : b[bindName];
+  var field = helpers.entityField(
+    entity.label || "Entity",
+    helpers.idPrefix + (entity.idSuffix || "entity"),
+    value || "",
+    entity.placeholder || "",
+    entity.domains || [],
+    bindName,
+    entity.rerender !== false,
+    entity.requiredMessage || ""
+  );
+  panel.appendChild(field.field);
+  return field;
+}
+
+function cardSensorPreviewHtml(b, helpers, value, unit, extraClass, valueClass) {
+  var className = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +
+    (helpers.cardSize === 4 && cardLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "");
+  return '<span class="' + className + '">' +
+    '<span class="sp-sensor-value' + (valueClass ? " " + valueClass : "") + '">' + helpers.escHtml(value) + '</span>' +
+    (unit != null ? '<span class="sp-sensor-unit">' + helpers.escHtml(unit) + '</span>' : "") +
+  '</span>';
+}
+
+function cardBadgeLabelHtml(helpers, label, badgeIcon) {
+  return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
+    helpers.escHtml(label) +
+  '</span><span class="sp-type-badge mdi mdi-' + badgeIcon + '"></span></span>';
+}
+
+function condField() {
+  var el = document.createElement("div");
+  el.className = "sp-cond-field";
+  return el;
+}
+
+function createRangeSlider(label, initial, postName) {
+  var wrap = document.createElement("div");
+  wrap.className = "sp-field";
+  wrap.appendChild(fieldLabel(label));
+  var row = document.createElement("div");
+  row.className = "sp-range-row";
+  var range = document.createElement("input");
+  range.type = "range";
+  range.className = "sp-range";
+  range.min = "10";
+  range.max = "100";
+  range.step = "5";
+  range.value = String(initial);
+  var val = document.createElement("span");
+  val.className = "sp-range-val";
+  val.textContent = initial + "%";
+  range.addEventListener("input", function () { val.textContent = this.value + "%"; });
+  range.addEventListener("change", function () {
+    if (typeof postName === "function") postName(this.value);
+    else if (postName) postNumber(postName, this.value);
+  });
+  row.appendChild(range);
+  row.appendChild(val);
+  wrap.appendChild(row);
+  return { wrap: wrap, range: range, val: val };
+}
