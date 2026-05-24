@@ -1,0 +1,30 @@
+# =============================================================================
+# LOCAL FLASH - Waveshare ESP32-S3-Touch-LCD-4.3B (Windows / COM port)
+# =============================================================================
+# Flash with: esphome run flash.yaml --device COM10
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-waveshare-43b"
+  friendly_name: "Waveshare ESP32-S3-Touch-LCD-4.3B"
+  espcontrol_component_url: "file:///c/Repos/espcontrol"
+  espcontrol_component_ref: "HEAD"
+  firmware_version: "local-flash"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include packages.yaml
+
+wifi:
+  ap:
+    ssid: "EspControl-Waveshare-43B"
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+  js_url: ""
+  js_include: "../../docs/public/webserver/waveshare-esp32-s3-touch-lcd-4.3b/www.js"

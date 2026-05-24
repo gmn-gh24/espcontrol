@@ -1,0 +1,25 @@
+# =============================================================================
+# FACTORY BUILD - Waveshare ESP32-S3-Touch-LCD-4.3B (4.3" landscape)
+# =============================================================================
+
+substitutions:
+  firmware_version: "0.0.0"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
+
+packages:
+  core: !include waveshare-esp32-s3-touch-lcd-4.3b.yaml
+
+esphome:
+  project:
+    name: jtenniswood.espcontrol
+    version: "${firmware_version}"
+
+dashboard_import:
+  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-touch-lcd-4.3b/esphome.yaml@main
+
+web_server:
+  port: 80
+  version: 3
+  js_url: ""
+  js_include: "../docs/public/webserver/waveshare-esp32-s3-touch-lcd-4.3b/www.js"

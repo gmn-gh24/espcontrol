@@ -388,6 +388,7 @@ export default defineConfig({
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
+          { text: '4.3-inch Waveshare 4.3B', link: '/screens/waveshare-esp32-s3-touch-lcd-4.3b' },
         ],
       },
       {

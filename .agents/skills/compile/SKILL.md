@@ -20,6 +20,7 @@ devices pass.
 guition-esp32-p4-jc1060p470
 guition-esp32-p4-jc4880p443
 guition-esp32-s3-4848s040
+waveshare-esp32-s3-touch-lcd-4.3b
 ```
 
 ## Workflow

@@ -128,6 +128,18 @@ const devices = [
     rows: 3,
     aspect: '1 / 1',
     shape: 'square'
+  },
+  {
+    slug: 'waveshare-esp32-s3-touch-lcd-4.3b',
+    name: 'Waveshare 4.3B',
+    size: '4.3 in',
+    resolution: '800 x 480',
+    orientation: 'Landscape',
+    slots: 15,
+    cols: 5,
+    rows: 3,
+    aspect: '800 / 480',
+    shape: 'landscape'
   }
 ]
 

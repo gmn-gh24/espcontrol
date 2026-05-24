@@ -1,0 +1,288 @@
+# =============================================================================
+# DEVICE - Waveshare ESP32-S3-Touch-LCD-4.3B hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 4.3" landscape
+# panel. Uses ESP32-S3 native WiFi, RGB parallel display (ST7262 via
+# mipi_rgb), GT911 capacitive touch, and CH422G I/O expander for backlight
+# and touch reset.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    version: 5.5.2
+    source: https://github.com/pioarduino/esp-idf/releases/download/v5.5.2/esp-idf-v5.5.2.tar.xz
+    platform_version: 55.03.37
+    sdkconfig_options:
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf]
+    refresh: 1s
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+# ESP32-S3 with octal PSRAM and RGB display fails to reinitialize peripherals
+# after a software reset. A brief deep sleep forces a full hardware reset on
+# wake, equivalent to a power cycle.
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    - priority: 800
+      then:
+        - lambda: |-
+            auto reason = esp_reset_reason();
+            if (reason == ESP_RST_SW) {
+              esp_ota_img_states_t ota_state;
+              const esp_partition_t *running = esp_ota_get_running_partition();
+              if (running != nullptr &&
+                  esp_ota_get_state_partition(running, &ota_state) == ESP_OK &&
+                  ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                ESP_LOGI("s3_reset", "Delaying deep-sleep reset until OTA image is marked valid");
+                id(post_ota_hardware_reset).execute();
+                return;
+              }
+            }
+            if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
+              esp_sleep_enable_timer_wakeup(100000);
+              esp_deep_sleep_start();
+            }
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - light.turn_off: display_backlight
+    on_end:
+      then:
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+  - platform: http_request
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+api:
+  listen_backlog: 2
+  max_connections: 2
+  max_send_queue: 4
+
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# CH422G I/O expander (backlight, LCD reset, touch reset)
+# ---------------------------------------------------------------------------
+i2c:
+  - id: bus_waveshare
+    sda: GPIO8
+    scl: GPIO9
+    scan: false
+    frequency: 400kHz
+
+ch422g:
+  - id: ch422g_hub
+    i2c_id: bus_waveshare
+
+# ---------------------------------------------------------------------------
+# Backlight (CH422G EXIO2 — digital on/off; no hardware PWM on this board)
+# ---------------------------------------------------------------------------
+output:
+  - platform: gpio
+    id: ch422g_backlight_gpio
+    pin:
+      ch422g: ch422g_hub
+      number: 2
+      mode:
+        output: true
+
+  - platform: template
+    id: gpio_backlight_pwm
+    type: float
+    write_action:
+      - if:
+          condition:
+            lambda: 'return state > 0.02f;'
+          then:
+            - output.turn_on: ch422g_backlight_gpio
+          else:
+            - output.turn_off: ch422g_backlight_gpio
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return id(screen_schedule_asleep) ||
+                       (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(display_asleep) &&
+                       !id(screen_schedule_asleep) &&
+                       !id(screensaver_display_off_active) &&
+                       !id(screensaver_dimmed_active);
+            then:
+              - script.execute: screen_schedule_manual_sleep
+
+# ---------------------------------------------------------------------------
+# Touchscreen (GT911 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    i2c_id: bus_waveshare
+    display: my_display
+    update_interval: 16ms
+    interrupt_pin: GPIO4
+    reset_pin:
+      ch422g: ch422g_hub
+      number: 1
+    on_touch:
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (4.3" 800x480 RGB parallel panel)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_rgb
+    model: ESP32-S3-TOUCH-LCD-4.3
+    id: my_display
+    setup_priority: 240
+    update_interval: never
+    auto_clear_enabled: false
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  setup_priority: 230
+  buffer_size: 25%
+  displays: my_display
+  rotation: 0
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: post_ota_hardware_reset
+    mode: single
+    then:
+      - delay: 75s
+      - lambda: |-
+          ESP_LOGI("s3_reset", "Performing delayed post-OTA deep-sleep reset");
+          esp_sleep_enable_timer_wakeup(100000);
+          esp_deep_sleep_start();
+
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 90
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 180
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 270
+                      else:
+                        - lvgl.display.set_rotation: 0
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: refresh_button_grid

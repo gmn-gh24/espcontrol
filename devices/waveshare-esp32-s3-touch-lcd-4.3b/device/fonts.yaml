@@ -1,0 +1,74 @@
+# =============================================================================
+# FONTS (DEVICE OVERRIDE) - Font variants for the 800x480 landscape display
+# =============================================================================
+
+font:
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_50_icons
+    size: 50
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_38_icons
+    size: 38
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  - file: "gfonts://Roboto@Light"
+    id: font_roboto_light_50_digits
+    size: 50
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"
+
+  - file: "gfonts://Roboto@Thin"
+    id: font_roboto_thin_125_digits
+    size: 125
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"
+
+  - file: "gfonts://Roboto@Light"
+    id: font_roboto_light_38_text
+    size: 38
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  - file: "gfonts://Roboto@Thin"
+    id: font_roboto_thin_110_text
+    size: 110
+    bpp: 4
+    glyphs:
+      - "0123456789.%"
+      - "VOL"
+
+  - file: "gfonts://Roboto"
+    id: font_roboto_regular_26_text
+    size: 26
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_19_network
+    size: 19
+    bpp: 4
+    glyphs: !include ../../../common/assets/network_status_glyphs.yaml
+
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_76_setup_icons
+    size: 76
+    bpp: 4
+    glyphs:
+      - "\U000F05A9"
+      - "\U000F0200"
+      - "\U000F0493"
+      - "\U000F07D0"
