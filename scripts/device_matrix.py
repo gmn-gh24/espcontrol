@@ -73,6 +73,10 @@ def nightly_matrix(data: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
     return {"include": [{"slug": slug} for slug in data["devices"].keys()]}
 
 
+def pr_matrix(data: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    return nightly_matrix(data)
+
+
 def write_json(data: Any) -> None:
     json.dump(data, sys.stdout, separators=(",", ":"))
     sys.stdout.write("\n")
@@ -93,6 +97,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     nightly = sub.add_parser("nightly", help="Print the nightly workflow matrix JSON")
     nightly.set_defaults(matrix=nightly_matrix)
+
+    pr = sub.add_parser("pr", help="Print the pull request firmware compile matrix JSON")
+    pr.set_defaults(matrix=pr_matrix)
 
     return parser
 

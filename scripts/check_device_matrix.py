@@ -49,6 +49,13 @@ def test_nightly_matrix_includes_every_manifest_slug() -> None:
     }
 
 
+def test_pr_matrix_includes_every_manifest_slug() -> None:
+    matrix = run_ok(["pr"])
+    assert matrix == {
+        "include": [{"slug": slug} for slug in manifest_data()["devices"].keys()]
+    }
+
+
 def test_release_matrix_includes_every_manifest_slug() -> None:
     matrix = run_ok(["release"])
     assert [entry["slug"] for entry in matrix["include"]] == list(manifest_data()["devices"].keys())
@@ -69,6 +76,7 @@ def main() -> int:
     tests = [
         test_release_matrix_shape,
         test_nightly_matrix_includes_every_manifest_slug,
+        test_pr_matrix_includes_every_manifest_slug,
         test_release_matrix_includes_every_manifest_slug,
         test_missing_chip_metadata_fails,
     ]

@@ -14,6 +14,7 @@ on:
       - 'src/webserver/**'
       - 'docs/public/webserver/**'
       - 'scripts/build.py'
+      - 'scripts/device_matrix.py'
       - 'scripts/generate_device_slots.py'
       - 'package.json'
       - 'package-lock.json'
@@ -31,16 +32,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  device-matrix:
+    name: Prepare Device Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            devices/manifest.json
+            scripts/device_matrix.py
+          sparse-checkout-cone-mode: false
+
+      - name: Generate device matrix
+        id: matrix
+        run: |
+          MATRIX=$(python3 scripts/device_matrix.py pr)
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+
   compile:
     name: Compile Firmware (${{ matrix.slug }})
+    needs: device-matrix
     runs-on: self-hosted
     strategy:
       fail-fast: false
       max-parallel: 1
-      matrix:
-        slug:
-          - guition-esp32-p4-jc1060p470
-          - guition-esp32-s3-4848s040
+      matrix: ${{ fromJSON(needs.device-matrix.outputs.matrix) }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
